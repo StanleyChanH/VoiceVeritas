@@ -50,3 +50,6 @@ Thumbs.db
 .env
 .env.*
 *.local.yaml
+
+# --- Session / editor tooling ---
+.zcode/
