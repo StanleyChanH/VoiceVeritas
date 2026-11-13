@@ -142,4 +142,5 @@ markers = [
 ]
 filterwarnings = [
     "ignore::DeprecationWarning:lightgbm.*",
+    "ignore:.*The argument 'eval_set' is deprecated.*:",
 ]

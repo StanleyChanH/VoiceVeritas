@@ -1,0 +1,70 @@
+"""Experiment configuration.
+
+Configs are dataclasses serialized as YAML (``configs/*.yaml``). Keep them
+small and explicit — every knob here exists because an experiment needed it.
+"""
+
+from __future__ import annotations
+
+from dataclasses import asdict, dataclass, field, fields
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+
+@dataclass
+class TrainConfig:
+    """Configuration for the Track-A (prosody + LightGBM) trainer."""
+
+    # data
+    manifests: list[str] = field(default_factory=list)  # JSONL manifest paths
+    max_duration_s: float = 30.0  # utterances longer than this are trimmed (middle cut)
+    min_duration_s: float = 2.0  # drop ultra-short utterances
+    feature_cache_dir: str = "runs/feature_cache"
+
+    # split (used only when the manifest has no splits yet)
+    train_ratio: float = 0.7
+    val_ratio: float = 0.15
+    seed: int = 42
+
+    # model
+    lgbm_params: dict[str, Any] = field(
+        default_factory=lambda: {
+            "objective": "binary",
+            "metric": "auc",
+            "learning_rate": 0.05,
+            "num_leaves": 31,
+            "min_child_samples": 10,
+            "feature_fraction": 0.9,
+            "bagging_fraction": 0.9,
+            "bagging_freq": 1,
+            "verbosity": -1,
+        }
+    )
+    num_boost_round: int = 500
+    early_stopping_rounds: int = 50
+    calibrate: bool = True  # isotonic calibration on the validation split
+
+    # output
+    run_dir: str = ""  # default: runs/<timestamp>_<name>
+    name: str = "baseline"
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    def save(self, path: str | Path) -> Path:
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(yaml.safe_dump(self.to_dict(), sort_keys=False), encoding="utf-8")
+        return path
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> TrainConfig:
+        known = {f.name for f in fields(cls)}
+        return cls(**{k: v for k, v in data.items() if k in known})
+
+    @classmethod
+    def from_yaml(cls, path: str | Path) -> TrainConfig:
+        data = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
+        return cls.from_dict(data)

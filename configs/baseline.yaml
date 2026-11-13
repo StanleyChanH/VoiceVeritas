@@ -1,0 +1,31 @@
+# Track-A baseline: prosody features -> LightGBM (isotonic-calibrated)
+# Docs: docs/usage.md — every field maps to voiceveritas.config.TrainConfig
+
+manifests:
+  - data/manifests/benchmark.jsonl
+
+max_duration_s: 30.0     # middle-trim longer utterances
+min_duration_s: 2.0      # drop ultra-short ones
+feature_cache_dir: runs/feature_cache
+
+train_ratio: 0.7         # used when manifests carry no splits yet
+val_ratio: 0.15
+seed: 42
+
+lgbm_params:
+  objective: binary
+  metric: auc
+  learning_rate: 0.05
+  num_leaves: 31
+  min_child_samples: 10
+  feature_fraction: 0.9
+  bagging_fraction: 0.9
+  bagging_freq: 1
+  verbosity: -1
+
+num_boost_round: 500
+early_stopping_rounds: 50
+calibrate: true
+
+name: baseline
+run_dir: ""              # default runs/<timestamp>_baseline
