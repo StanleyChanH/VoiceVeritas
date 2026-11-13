@@ -4,8 +4,6 @@
 
 **Detect whether an interview answer is being read from a script — or genuinely spoken.**
 
-**检测面试回答是"照稿朗读"还是"真实作答"。**
-
 [![CI](https://github.com/StanleyChanH/VoiceVeritas/actions/workflows/ci.yml/badge.svg)](https://github.com/StanleyChanH/VoiceVeritas/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
@@ -13,35 +11,29 @@
 
 *Audio-only read-speech detection for AI interview anti-cheating.*
 
+**English** | [简体中文](README.zh-CN.md)
+
 </div>
 
 ---
 
-## Why / 为什么做这个
+## Why
 
 Online interviews are increasingly vulnerable to a simple cheat: the candidate **reads a prepared answer** (or a ChatGPT-generated one) off-screen. Human reviewers struggle to tell scripted from spontaneous speech reliably — but the acoustic signatures differ measurably.
 
-在线面试中，候选人**照着屏幕朗读准备好的答案**（或 AI 生成的答案）是常见的作弊手段。人耳难以稳定区分朗读与即兴表达，但两者的声学签名是可测量的。
-
-VoiceVeritas is an **open-source, audio-only** system that takes an interview answer recording and returns:
-
-VoiceVeritas 是一个**开源、纯音频**的系统，输入一段面试回答录音，输出：
+VoiceVeritas is an **open-source, audio-only** system that takes an interview answer recording and returns
 
 ```
-P(read | audio) ∈ [0, 1]   —   该音频为"朗读/背诵"的概率
+P(read | audio) ∈ [0, 1]   —   the probability the audio was read/recited
 ```
 
 plus per-segment scores, confidence, and (for the interpretable baseline) the prosodic cues that drove the decision.
 
-以及分段评分、置信度，以及（可解释基线模型）驱动判断的韵律线索。
-
 > 📌 **State of research** — the approach follows the SLT 2024 paper [*Classification of Spontaneous and Scripted Speech for Multilingual Audio*](https://arxiv.org/abs/2412.11896): frozen pretrained speech-transformer embeddings + a light classifier beat handcrafted prosodic features. To our knowledge, **no open-source implementation of interview read-speech detection existed before this project.**
 
-## Results / 结果
+## Results
 
-Speaker-disjoint benchmark (LibriSpeech read vs AMI spontaneous, 65 test
-utterances from unseen speakers; full details & caveats in
-[benchmark.md](docs/benchmark.md)):
+Speaker-disjoint benchmark (LibriSpeech *read* vs AMI *spontaneous*, 65 test utterances from unseen speakers; full details & caveats in [benchmark.md](docs/benchmark.md)):
 
 | Model | Test AUC-ROC | EER | FPR@TPR95 |
 |---|---|---|---|
@@ -52,52 +44,51 @@ Latency (Track A API, 10 s audio, CPU-only): **p50 243 ms** end-to-end.
 
 ```console
 $ vv predict runs/<run>/model.joblib answer.wav
-model        : prosody_lgbm
-P(read)      : 0.000
-verdict@0.5  : SPONTANEOUS
+model             : prosody_lgbm
+P(read)           : 0.000
+verdict@0.5       : SPONTANEOUS
 top contributors :
   speechseg_mean     -0.832   ← long speech runs = spontaneous planning
   pause_total_ratio  -0.776   ← natural pause structure
 ```
 
-⚠️ These are *cross-domain* research numbers — recalibrate on your own
-traffic before any operational use ([ethics](docs/ethics.md)).
+⚠️ These are *cross-domain* research numbers — recalibrate on your own traffic before any operational use ([ethics](docs/ethics.md)).
 
-## Architecture / 架构
+## Architecture
 
 ```mermaid
 flowchart LR
     A["Audio (.wav .mp3 .m4a)"] --> B["Preprocess\n16 kHz mono"]
-    B --> C["Track A · Prosody\nVAD · F0 · Jitter/Shimmer\nPause stats · PVI · rate"]
-    B --> D["Track B · SSL backbone\nfrozen wav2vec2 / HuBERT\nmean+std pooled embeddings"]
+    B --> C["Track A · Prosody\nVAD · F0 · Jitter/Shimmer\nPause stats · nPVI · rate"]
+    B --> D["Track B · SSL backbone\nfrozen wav2vec2\nmean+std pooled embeddings"]
     C --> E["LightGBM\n+ calibration"]
-    D --> F["MLP head\n(BCE / Focal)"]
+    D --> F["MLP head\n(BCE)"]
     E --> G["Segment scores →\nmedian aggregation"]
     F --> G
     G --> H["P(read) · confidence\nfeature attribution"]
 ```
 
-- **Track A (interpretable baseline)**: energy VAD + 34 prosodic handcrafted features (F0 statistics, jitter, shimmer, pause/silence distribution, nPVI rhythm, syllable-rate variability) → LightGBM with isotonic calibration.
+- **Track A (interpretable baseline)**: energy VAD + 34 handcrafted prosodic features (F0 statistics, jitter, shimmer, pause/silence distribution, nPVI rhythm, syllable-rate variability) → LightGBM with isotonic calibration.
 - **Track B (performance)**: frozen self-supervised backbone ([wav2vec 2.0](https://arxiv.org/abs/2006.11477)) embeddings, chunk-level scoring, median aggregation — the SOTA recipe from the literature.
 - **Metrics that respect candidates**: besides AUC-ROC/AUC-PR we report **EER and FPR@TPR95**, because flagging a fluent honest candidate is worse than missing a subtle reader.
 
-## Quickstart / 快速开始
+## Quickstart
 
 ```bash
-# 1. Install (Python 3.10+, we recommend uv)
-uv sync --extra api --extra deep      # or: pip install -e ".[api,deep]"
+# 1. Install (Python 3.10+; uv recommended — or: pip install -e ".[api,deep]")
+uv sync --extra api --extra deep
 
-# 2. Predict on a single file
-vv predict path/to/answer.wav
+# 2. Prepare the public benchmark data (~750 MB) and train the baseline
+uv run vv prepare librispeech --download
+uv run vv prepare ami --download
+cat data/manifests/librispeech.jsonl data/manifests/ami.jsonl > data/manifests/benchmark.jsonl
+uv run vv train --config configs/baseline.yaml
 
-# 3. Prepare public benchmark data + train the baseline
-vv prepare --dataset librispeech --subset dev-clean
-vv prepare --dataset sbcsae
-vv train --config configs/baseline.yaml
-vv eval  --run runs/<your-run>
+# 3. Score a single file (segment scores + feature attribution)
+uv run vv predict runs/<timestamp>_baseline/model.joblib answer.wav
 
-# 4. Serve the REST API
-vv serve --model runs/<your-run>   # Swagger UI at http://localhost:8000/docs
+# 4. Serve the REST API (Swagger UI at http://localhost:8000/docs)
+uv run vv serve runs/<timestamp>_baseline
 ```
 
 <details>
@@ -106,7 +97,7 @@ vv serve --model runs/<your-run>   # Swagger UI at http://localhost:8000/docs
 ```bash
 curl -X POST http://localhost:8000/v1/predict \
   -F "audio=@answer.wav" \
-  -F "reference_text=optional... (unused by audio-only models)"
+  -F "reference_text=optional (reserved, unused by audio-only models)"
 ```
 
 ```json
@@ -114,48 +105,42 @@ curl -X POST http://localhost:8000/v1/predict \
   "read_probability": 0.87,
   "label": "read",
   "confidence": 0.72,
-  "segmented_scores": [0.81, 0.89, 0.91],
+  "segmented_scores": [{"start_s": 0, "end_s": 25.7, "score": 0.87}],
   "processing_ms": 184,
-  "model": {"name": "prosody-lgbm", "version": "0.1.0"}
+  "model": {"name": "prosody_lgbm", "package_version": "0.1.0"}
 }
 ```
 
 </details>
 
-## Repository layout / 仓库结构
+## Repository layout
 
 ```
 src/voiceveritas/     core package (audio IO, VAD, features, models, training, API)
 configs/              experiment configs (baseline / deep)
-scripts/              dataset preparation & benchmarking utilities
+scripts/              benchmarking utilities & serve entrypoint
 docs/                 usage, data, benchmark, model card, ethics charter
 tests/                unit + integration tests on synthetic fixtures
 ```
 
-## Documentation / 文档
+## Documentation
 
 - [Usage guide](docs/usage.md)
-- [Dataset preparation](docs/data.md) — LibriSpeech, SBCSAE, CORAAL, AMI (licenses documented)
-- [Benchmark results](docs/benchmark.md)
+- [Dataset preparation](docs/data.md) — LibriSpeech, AMI, SBCSAE, CORAAL (licenses documented)
+- [Benchmark results](docs/benchmark.md) — including the shortcut-learning postmortem
 - [Model card](docs/model_card.md)
 - [**Ethics & responsible use**](docs/ethics.md) — **read this before deploying**
 
-## Status & roadmap / 状态与路线图
+## Status & roadmap
 
-- [x] M0 — repo skeleton, CI, community files
-- [x] M1 — audio IO + manifests + speaker-disjoint splits
-- [x] M2 — VAD + prosodic feature extractor
-- [x] M3 — training / evaluation pipeline
-- [x] M4 — real-data benchmark (LibriSpeech vs AMI), shortcut-leak fixed
-- [x] M5 — wav2vec2 frozen-embedding deep track
-- [x] M6 — CLI + FastAPI service + Docker (243 ms p50 for 10 s audio)
-- [x] M7 — model card, docs, v0.1.0 release
+- [x] Dual-track models, speaker-disjoint benchmark, CLI + FastAPI + Docker
+- [x] v0.1.0 released (see [releases](https://github.com/StanleyChanH/VoiceVeritas/releases))
 - [ ] i18n — Chinese spontaneous-speech datasets, multilingual eval
 - [ ] ASR-alignment features (WhisperX forced alignment, optional extra)
 - [ ] Robustness suite — noise/SNR/bitrate stress tests
 - [ ] Pretrained release — publish a ready-to-use model artifact
 
-## Contributing / 贡献
+## Contributing
 
 Issues and PRs are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). Please read the [ethics charter](docs/ethics.md) first: this tool is built to **assist fair human review, not to automate rejection**.
 
