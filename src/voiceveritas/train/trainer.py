@@ -59,8 +59,10 @@ def _fit_isotonic_calibration(model: lgb.LGBMClassifier, X_val: np.ndarray, y_va
     return calibrated
 
 
-def train_baseline(config: TrainConfig) -> dict:
+def train_baseline(config: TrainConfig, transcriber=None) -> dict:
     """Train, calibrate, evaluate, and persist a Track-A run.
+
+    ``transcriber`` overrides the real ASR backend (test injection).
 
     Returns the run summary dict (also written to ``<run_dir>/metrics.json``).
     """
@@ -88,7 +90,16 @@ def train_baseline(config: TrainConfig) -> dict:
         cache_dir=config.feature_cache_dir,
         max_duration_s=config.max_duration_s,
         min_duration_s=config.min_duration_s,
+        with_asr=config.use_asr,
+        transcriber=transcriber,
+        compute_ppl=config.compute_ppl,
     )
+    if config.use_asr:
+        from voiceveritas.models.prosody_asr_lgbm import COMBINED_NAMES
+
+        feature_names = list(COMBINED_NAMES)
+    else:
+        feature_names = list(FEATURE_NAMES)
 
     train = dataset.by_split("train")
     val = dataset.by_split("val")
@@ -134,7 +145,7 @@ def train_baseline(config: TrainConfig) -> dict:
         return m.predict_proba(ds.X)[:, 1]
 
     report: dict = {
-        "run": {"name": config.name, "feature_names": list(FEATURE_NAMES)},
+        "run": {"name": config.name, "feature_names": feature_names},
         "data": manifest_stats(load_manifest(config.manifests[0]))
         if len(config.manifests) == 1
         else {},
@@ -154,16 +165,26 @@ def train_baseline(config: TrainConfig) -> dict:
     run_dir.mkdir(parents=True, exist_ok=True)
     config.save(run_dir / "config.yaml")
 
-    predictor = ProsodyLGBM(
-        model=calibrated,
-        feature_names=list(FEATURE_NAMES),
-        metadata={"run_dir": str(run_dir), "config": config.to_dict()},
-    )
+    if config.use_asr:
+        from voiceveritas.models.prosody_asr_lgbm import ProsodyASRLGBM
+
+        predictor: ProsodyLGBM = ProsodyASRLGBM(
+            model=calibrated,
+            feature_names=feature_names,
+            metadata={"run_dir": str(run_dir), "config": config.to_dict()},
+            compute_ppl=config.compute_ppl,
+        )
+    else:
+        predictor = ProsodyLGBM(
+            model=calibrated,
+            feature_names=feature_names,
+            metadata={"run_dir": str(run_dir), "config": config.to_dict()},
+        )
     predictor.save(run_dir / "model.joblib", train_stats=report.get("data", {}))
 
     importance = pd.DataFrame(
         {
-            "feature": FEATURE_NAMES,
+            "feature": feature_names,
             "gain": model.booster_.feature_importance(importance_type="gain"),
         }
     ).sort_values("gain", ascending=False)

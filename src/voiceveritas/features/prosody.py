@@ -253,10 +253,10 @@ FEATURE_NAMES: tuple[str, ...] = (
 
 @dataclass
 class FeatureResult:
-    """Fixed-order prosodic feature vector with names and NaN mask."""
+    """Fixed-order feature vector with its name contract and NaN mask."""
 
-    values: np.ndarray  # shape (len(FEATURE_NAMES),), float64, may contain NaN
-    names: tuple[str, ...] = FEATURE_NAMES
+    values: np.ndarray  # shape (len(names),), float64, may contain NaN
+    names: tuple[str, ...]  # no default: mixing name sets silently is a bug
 
     @property
     def valid_mask(self) -> np.ndarray:
@@ -321,4 +321,4 @@ def extract_prosody(
     feats.update(_spectral_features(x, sr))
 
     vector = np.array([feats.get(name, np.nan) for name in FEATURE_NAMES], dtype=np.float64)
-    return FeatureResult(values=vector)
+    return FeatureResult(values=vector, names=FEATURE_NAMES)

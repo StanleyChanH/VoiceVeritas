@@ -46,6 +46,11 @@ class TrainConfig:
     early_stopping_rounds: int = 50
     calibrate: bool = True  # isotonic calibration on the validation split
 
+    # ASR lexical/alignment block (requires the [asr] extra at train AND
+    # predict time; transcripts cached under feature_cache_dir)
+    use_asr: bool = False
+    compute_ppl: bool = False  # GPT-2 perplexity; needs [deep] extra, slow
+
     # output
     run_dir: str = ""  # default: runs/<timestamp>_<name>
     name: str = "baseline"

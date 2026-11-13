@@ -13,11 +13,17 @@ _LOADERS: dict[str, Any] = {
 
 
 def _register_deep() -> None:
-    """Register Track-B lazily: torch/transformers are optional extras."""
+    """Register optional-extras models lazily (torch/transformers/[asr])."""
     try:
         from voiceveritas.models.wav2vec_head import Wav2vecHead
 
         _LOADERS[Wav2vecHead.name] = Wav2vecHead.load
+    except ImportError:  # pragma: no cover - depends on extras installed
+        pass
+    try:
+        from voiceveritas.models.prosody_asr_lgbm import ProsodyASRLGBM
+
+        _LOADERS[ProsodyASRLGBM.name] = ProsodyASRLGBM.load
     except ImportError:  # pragma: no cover - depends on extras installed
         pass
 

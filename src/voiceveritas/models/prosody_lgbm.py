@@ -77,7 +77,7 @@ class ProsodyLGBM(ReadSpeechModel):
             # explain the *longest* window (representative of the utterance)
             seg = max(result.segments, key=lambda s: s.end_s - s.start_s)
             x = self._features_for_window(samples, sr, seg.start_s, seg.end_s).reshape(1, -1)
-            result.feature_values = dict(zip(FEATURE_NAMES, x.ravel().tolist(), strict=True))
+            result.feature_values = dict(zip(self.feature_names, x.ravel().tolist(), strict=True))
             result.top_contributors = self.explain(x)
         return result
 
