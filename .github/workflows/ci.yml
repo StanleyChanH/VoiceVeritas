@@ -40,13 +40,7 @@ jobs:
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install core package
-        run: uv sync --extra api
+      - name: Install package with test dependencies
+        run: uv sync --extra api --extra dev
       - name: Run tests
         run: uv run pytest -v
-      - name: Upload coverage
-        if: matrix.python-version == '3.11'
-        uses: codecov/codecov-action@v4
-        with:
-          files: coverage.xml
-        continue-on-error: true

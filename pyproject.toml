@@ -113,7 +113,9 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["B011"]
+# B011: pytest.fail(False) idiom; I001: import order in tests is cosmetic and
+# its "correct" answer varies across environments (venv-aware classification)
+"tests/*" = ["B011", "I001"]
 "src/voiceveritas/api/*" = ["B008"]  # FastAPI idiom: File/Form defaults
 
 [tool.ruff.format]
