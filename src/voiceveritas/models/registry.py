@@ -26,6 +26,12 @@ def _register_deep() -> None:
         _LOADERS[ProsodyASRLGBM.name] = ProsodyASRLGBM.load
     except ImportError:  # pragma: no cover - depends on extras installed
         pass
+    try:
+        from voiceveritas.models.ensemble import EnsembleModel
+
+        _LOADERS[EnsembleModel.name] = EnsembleModel.load
+    except ImportError:  # pragma: no cover - depends on extras installed
+        pass
 
 
 _register_deep()

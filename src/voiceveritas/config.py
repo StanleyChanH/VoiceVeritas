@@ -103,6 +103,10 @@ class DeepTrainConfig:
     epochs: int = 100
     patience: int = 10
 
+    # noise-augment train-split audio before embedding extraction
+    # (mitigates the white-noise inversion, see docs/robustness.md)
+    augment: bool = False
+
     run_dir: str = ""
     name: str = "deep"
 

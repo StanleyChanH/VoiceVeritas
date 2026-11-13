@@ -77,6 +77,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_serve.add_argument("--max-upload-mb", type=int, default=50)
 
     # ------------------------------------------------------------------
+    p_ens = sub.add_parser("ensemble", help="bundle model artifacts into a median ensemble")
+    _add_common(p_ens)
+    p_ens.add_argument("models", nargs="+", help="two or more model.joblib paths")
+    p_ens.add_argument("-o", "--out", required=True, help="output ensemble artifact path")
+
+    # ------------------------------------------------------------------
     p_rob = sub.add_parser("robustness", help="stress a trained model under acoustic perturbations")
     _add_common(p_rob)
     p_rob.add_argument("model", help="path to model.joblib (or run directory)")
@@ -283,6 +289,21 @@ def _cmd_robustness(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_ensemble(args: argparse.Namespace) -> int:
+    from voiceveritas.models import load_model
+    from voiceveritas.models.ensemble import EnsembleModel
+
+    if len(args.models) < 2:
+        print("an ensemble needs at least two models", file=sys.stderr)
+        return 2
+    members = [load_model(p) for p in args.models]
+    ens = EnsembleModel(members)
+    ens.save(args.out)
+    print(f"ensemble of {len(members)} members saved to {args.out}")
+    print("members:", ", ".join(m.name for m in members))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -299,6 +320,7 @@ def main(argv: list[str] | None = None) -> int:
         "prepare": _cmd_prepare,
         "serve": _cmd_serve,
         "robustness": _cmd_robustness,
+        "ensemble": _cmd_ensemble,
     }
     return handlers[args.command](args)
 

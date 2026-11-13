@@ -18,5 +18,7 @@ lr: 0.001
 epochs: 100
 patience: 10
 
+augment: true   # noise-augmented train embeddings (fixes white-noise inversion)
+
 name: deep
 run_dir: ""

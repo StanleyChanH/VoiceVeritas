@@ -32,27 +32,49 @@ logger = logging.getLogger(__name__)
 def build_embedding_dataset(
     config: DeepTrainConfig,
 ) -> tuple[np.ndarray, np.ndarray, list[str], list[str]]:
-    """Extract (or load cached) pooled embeddings for all manifest utterances."""
+    """Extract (or load cached) pooled embeddings for all manifest utterances.
+
+    With ``config.augment``, train-split audio is noise-augmented before
+    embedding extraction (dual cache namespaces: augmented train embeddings
+    live alongside clean ones, so val/test rows are never re-extracted).
+    """
     utterances: list = []
     for p in config.manifests:
         utterances.extend(load_manifest(p))
 
-    cache_path = Path(config.feature_cache_dir) / f"{EMB_VERSION}.npz"
-    cache: dict[str, np.ndarray] = {}
-    if cache_path.exists():
-        cached = np.load(cache_path, allow_pickle=False)
-        cache = {k: cached[k] for k in cached.files}
-        logger.info("loaded %d cached embeddings", len(cache))
+    cache_dir = Path(config.feature_cache_dir)
+    clean_path = cache_dir / f"{EMB_VERSION}.npz"
+    aug_path = cache_dir / f"{EMB_VERSION}-aug.npz"
+
+    clean_cache: dict[str, np.ndarray] = {}
+    if clean_path.exists():
+        cached = np.load(clean_path, allow_pickle=False)
+        clean_cache = {k: cached[k] for k in cached.files}
+    aug_cache: dict[str, np.ndarray] = {}
+    if config.augment and aug_path.exists():
+        cached = np.load(aug_path, allow_pickle=False)
+        aug_cache = {k: cached[k] for k in cached.files}
+    logger.info(
+        "embeddings cache: %d clean%s",
+        len(clean_cache),
+        f", {len(aug_cache)} augmented" if config.augment else "",
+    )
 
     rows, ys, splits, speakers = [], [], [], []
     for utt in utterances:
         key = _cache_key(utt, EMB_VERSION)
+        use_aug = config.augment and utt.split == "train"
+        cache = aug_cache if use_aug else clean_cache
         emb = cache.get(key)
         if emb is None:
             loaded = load_audio(utt.path, sample_rate=16000)
             trimmed = _middle_trim(loaded.samples, loaded.sample_rate, config.max_duration_s)
             if len(trimmed) / 16000 < config.min_duration_s:
                 continue
+            if use_aug:
+                from voiceveritas.train.augment import augment_for_training
+
+                trimmed = augment_for_training(trimmed, 16000, key=utt.utt_id, seed=config.seed)
             emb = embed_window(trimmed, 16000, config.backbone)
             cache[key] = emb
         rows.append(emb)
@@ -60,8 +82,10 @@ def build_embedding_dataset(
         splits.append(utt.split)
         speakers.append(utt.speaker_id)
 
-    cache_path.parent.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(cache_path, **cache)  # type: ignore[arg-type]
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(clean_path, **clean_cache)  # type: ignore[arg-type]
+    if config.augment and aug_cache:
+        np.savez_compressed(aug_path, **aug_cache)  # type: ignore[arg-type]
     X = np.vstack(rows).astype(np.float32)
     return X, np.asarray(ys, dtype=int), splits, speakers
 
