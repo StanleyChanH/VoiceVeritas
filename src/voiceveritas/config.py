@@ -50,6 +50,10 @@ class TrainConfig:
     # predict time; transcripts cached under feature_cache_dir)
     use_asr: bool = False
     compute_ppl: bool = False  # GPT-2 perplexity; needs [deep] extra, slow
+    # whisper confidence features are channel-quality proxies (studio vs
+    # meeting mic) — a cross-corpus leak, excluded by default (see
+    # docs/benchmark.md). Enable only for same-channel training data.
+    use_asr_conf: bool = False
 
     # output
     run_dir: str = ""  # default: runs/<timestamp>_<name>

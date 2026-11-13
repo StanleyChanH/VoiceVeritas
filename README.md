@@ -40,6 +40,7 @@ Speaker-disjoint benchmark (LibriSpeech *read* vs AMI *spontaneous*, 65 test utt
 | Model | Test AUC-ROC | EER | FPR@TPR95 |
 |---|---|---|---|
 | Track A · prosody + LightGBM (interpretable) | **0.978** | 4% | 4% |
+| Track A+ASR · + lexical/alignment features (`[asr]` extra) | **0.998** | 5% | **0%** |
 | Track B · frozen wav2vec2-base + MLP | **1.000** | 0% | 0% |
 
 Latency (Track A API, 10 s audio, CPU-only): **p50 243 ms** end-to-end.
@@ -152,8 +153,9 @@ tests/                unit + integration tests on synthetic fixtures
 - [x] Dual-track models, speaker-disjoint benchmark, CLI + FastAPI + Docker
 - [x] Robustness suite — noise/SNR/bitrate stress tests + honest degradation report
 - [x] Pretrained release — Track-A artifact on the [releases](https://github.com/StanleyChanH/VoiceVeritas/releases) page
-- [ ] ASR-alignment features (WhisperX forced alignment, optional extra)
+- [x] ASR lexical/alignment features — fillers, pause-syntax misalignment, formality (faster-whisper; `[asr]` extra)
 - [ ] Noise-aware training (augmentation) + SNR-gated routing
+- [ ] WhisperX character-level forced alignment (finer pause-syntax features)
 
 ## Contributing
 

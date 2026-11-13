@@ -15,6 +15,7 @@ seed: 42
 
 use_asr: true
 compute_ppl: false        # GPT-2 perplexity; needs [deep], ~0.5s/utt slower
+use_asr_conf: false       # whisper-confidence = channel proxy, off by default
 
 lgbm_params:
   objective: binary

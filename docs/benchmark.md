@@ -19,11 +19,38 @@ then `vv train --config configs/baseline.yaml` and
 | Model | Test AUC-ROC | AUC-PR | EER | FPR@TPR95 | Brier |
 |---|---|---|---|---|---|
 | Track A: prosody + LightGBM (isotonic) | **0.978** | 0.974 | 0.04 | 0.04 | 0.019 |
+| Track A+ASR: + lexical/alignment features | **0.998** | 0.999 | 0.05 | **0.00** | — |
 | Track B: frozen wav2vec2-base + MLP | **1.000** | 1.000 | 0.00 | 0.00 | — |
 
 Track A's top features by gain: `zcr_std`, `zcr_mean`, `speechseg_mean`
 (speech-run duration — the literature's #1 cue), `pause_total_ratio`,
 `spec_centroid_std`, `f0_p10`, `spec_flatness_mean`, `hnr_db`.
+
+### The ASR block: what the words actually add
+
+`configs/baseline_asr.yaml` concatenates 15 word-timestamp features
+(faster-whisper tiny.en; transcripts cached) to the prosody vector.
+Controlled ablation on the same split (no isotonic, same seeds):
+
+| Feature set | Test AUC | EER | FPR@TPR95 |
+|---|---|---|---|
+| prosody only | 0.997 | 7.5% | 4% |
+| lexical only (fillers, pause-syntax, formality) | 0.918 | 16% | 20% |
+| prosody + lexical | **0.998** | 5.0% | **0%** |
+
+The lexical block alone is a respectable detector (0.918 AUC) — filler
+rate, pause-after-function-word ratio and contraction rate carry real
+style signal. Combined, they buy modest AUC but halve EER and zero out
+FPR@TPR95, the metric that matters most for not accusing honest
+candidates.
+
+**Second leak caught and killed**: whisper's transcription-confidence
+features dominated the first ASR run (gain 4097 = 9x the next feature).
+Confidence reflects *recording quality* (studio LibriSpeech vs meeting
+mixes), not speech style — the same cross-corpus leak class as the
+duration shortcut. Masking them *improved* test AUC (0.992 → 0.998).
+They are now excluded by default (`use_asr_conf: false` in
+TrainConfig, regression-tested).
 
 ## The shortcut we had to kill / 我们必须消灭的捷径
 

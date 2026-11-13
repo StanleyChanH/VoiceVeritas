@@ -143,6 +143,30 @@ class TestAsrPipeline:
         assert 0.0 <= p_read.read_probability <= 1.0
         assert p_read.read_probability > p_spon.read_probability
 
+    def test_conf_features_masked_by_default(self, corpus: Path, cache: Path):
+        """The channel-proxy conf columns must be NaN unless opted in."""
+        from voiceveritas.asr.features import ASR_FEATURE_NAMES
+        from voiceveritas.models.prosody_asr_lgbm import COMBINED_NAMES
+
+        masked = build_feature_dataset(
+            [str(corpus)], cache_dir=cache, with_asr=True, transcriber=stub_transcriber
+        )
+        n_prosody = len(COMBINED_NAMES) - len(ASR_FEATURE_NAMES)
+        for name in ("asr_conf_mean", "asr_conf_std"):
+            col = masked.X[:, n_prosody + ASR_FEATURE_NAMES.index(name)]
+            assert not col[~np.isnan(col)].any() if col.dtype.kind == "f" else True
+            assert np.isnan(col).all(), f"{name} should be masked"
+
+        unmasked = build_feature_dataset(
+            [str(corpus)],
+            cache_dir=cache,
+            with_asr=True,
+            transcriber=stub_transcriber,
+            use_asr_conf=True,
+        )
+        col = unmasked.X[:, n_prosody + ASR_FEATURE_NAMES.index("asr_conf_mean")]
+        assert np.isfinite(col).any()
+
     def test_contract_mismatch_rejected(self, tmp_path: Path):
         import joblib
 

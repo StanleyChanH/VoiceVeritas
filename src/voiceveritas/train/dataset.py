@@ -83,12 +83,15 @@ def build_feature_dataset(
     with_asr: bool = False,
     transcriber: Callable[..., list] | None = None,
     compute_ppl: bool = False,
+    use_asr_conf: bool = False,
 ) -> FeatureDataset:
     """Load manifests and extract (or fetch cached) features per utterance.
 
     With ``with_asr=True`` the prosody vector is concatenated with the ASR
     lexical/alignment vector (transcripts cached under ``cache_dir``).
-    ``transcriber`` is injectable for tests.
+    ``transcriber`` is injectable for tests. ASR confidence columns are
+    masked (NaN) unless ``use_asr_conf`` — they proxy recording quality,
+    which leaks corpus identity on cross-domain benchmarks.
     """
     utterances: list[Utterance] = []
     for p in manifest_paths:
@@ -165,6 +168,14 @@ def build_feature_dataset(
     if not rows:
         raise ValueError("no usable utterances found in manifests")
 
+    X = np.vstack(rows)
+    if with_asr and not use_asr_conf:
+        from voiceveritas.asr.features import ASR_FEATURE_NAMES
+
+        n_prosody = X.shape[1] - len(ASR_FEATURE_NAMES)
+        for conf_name in ("asr_conf_mean", "asr_conf_std"):
+            X[:, n_prosody + ASR_FEATURE_NAMES.index(conf_name)] = np.nan
+
     if cache_path is not None:
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         np.savez_compressed(cache_path, **cache)  # type: ignore[arg-type]
@@ -176,7 +187,7 @@ def build_feature_dataset(
         save_word_cache(cache_dir, word_cache)  # type: ignore[arg-type]
 
     return FeatureDataset(
-        X=np.vstack(rows),
+        X=X,
         y=np.asarray(ys, dtype=int),
         utt_ids=utt_ids,
         speakers=speakers,

@@ -68,6 +68,19 @@ cat data/manifests/librispeech.jsonl data/manifests/ami.jsonl \
 uv run vv train --config configs/baseline.yaml
 ```
 
+**Track A+ASR — prosody + lexical/alignment features (needs `[asr]` extra):**
+
+```bash
+uv sync --extra asr                     # faster-whisper (tiny.en, int8 CPU)
+uv run vv train --config configs/baseline_asr.yaml
+```
+
+Adds 15 word-timestamp features (fillers, pause-syntax misalignment,
+formality proxies; optional GPT-2 perplexity via `compute_ppl` with the
+`[deep]` extra). Transcripts are cached under `runs/feature_cache/` — the
+corpus is transcribed once, re-runs are as fast as Track A. Predictions
+with these models transcribe each window on the fly.
+
 **Track B — frozen wav2vec 2.0 + MLP head (see [benchmark.md](benchmark.md)):**
 
 ```bash
