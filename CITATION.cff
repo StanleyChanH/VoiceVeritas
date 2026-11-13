@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "If you use VoiceVeritas in your research or product, please cite it as below."
+title: "VoiceVeritas: open-source read-speech detection for interview anti-cheating"
+type: software
+authors:
+  - name: "VoiceVeritas Contributors"
+repository-code: "https://github.com/StanleyChanH/VoiceVeritas"
+keywords:
+  - speech-processing
+  - anti-cheating
+  - read-speech-detection
+  - spontaneous-speech
+  - prosody
+license: Apache-2.0
