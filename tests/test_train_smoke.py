@@ -92,6 +92,31 @@ def _latest_run_dir() -> Path:
     return runs[-1]
 
 
+class TestCalibrationPath:
+    """The isotonic-calibration code path (caught a real sklearn API break)."""
+
+    def test_calibrated_model_trains_and_predicts(
+        self, synthetic_manifest: Path, shared_cache: Path, tmp_path: Path
+    ):
+        config = TrainConfig(
+            manifests=[str(synthetic_manifest)],
+            feature_cache_dir=str(shared_cache),
+            lgbm_params=SMOKE_LGBM,
+            num_boost_round=30,
+            early_stopping_rounds=10,
+            calibrate=True,
+            run_dir=str(tmp_path / "run_cal"),
+        )
+        report = train_baseline(config)
+        assert (tmp_path / "run_cal" / "model.joblib").exists()
+        assert report["val"]["auc_roc"] is not None
+
+        model = load_model(tmp_path / "run_cal" / "model.joblib")
+        x = synthesize_speechlike(np.random.default_rng(7), 5.0, style="spontaneous")
+        result = model.predict(x, SR)
+        assert 0.0 <= result.read_probability <= 1.0
+
+
 class TestTrainSmoke:
     def test_train_produces_artifacts_and_learns(self, trained_run: Path):
         for artifact in ("model.joblib", "metrics.json", "config.yaml", "feature_importance.csv"):

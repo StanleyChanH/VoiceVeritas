@@ -20,7 +20,12 @@ from voiceveritas.vad import energy_vad
 class TestContract:
     def test_names_unique_and_fixed_order(self):
         assert len(FEATURE_NAMES) == len(set(FEATURE_NAMES))
-        assert FEATURE_NAMES[0] == "duration_log"
+        assert FEATURE_NAMES[0] == "f0_voiced_ratio"
+
+    def test_no_duration_shortcut(self):
+        # duration leaks dataset identity (see docs/benchmark.md) — guard
+        # against reintroducing it as a feature
+        assert "duration_log" not in FEATURE_NAMES
 
     def test_vector_shape_matches_names(self, rng):
         x = synthesize_speechlike(rng, 5.0, style="spontaneous")
@@ -57,10 +62,6 @@ class TestPhysicalCorrectness:
         d = result.to_dict()
         assert d["f0_mean"] == pytest.approx(220.0, abs=5.0)
         assert d["f0_median"] == pytest.approx(220.0, abs=5.0)
-
-    def test_duration_feature(self):
-        result = extract_prosody(sine_wave(200.0, 7.0), SR)
-        assert result.to_dict()["duration_log"] == pytest.approx(np.log10(7.0), abs=0.01)
 
     def test_constant_tone_is_all_speech(self):
         result = extract_prosody(sine_wave(200.0, 2.0), SR)

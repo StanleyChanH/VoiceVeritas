@@ -68,3 +68,45 @@ class TrainConfig:
     def from_yaml(cls, path: str | Path) -> TrainConfig:
         data = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
         return cls.from_dict(data)
+
+
+@dataclass
+class DeepTrainConfig:
+    """Configuration for the Track-B (frozen wav2vec2 + MLP head) trainer."""
+
+    manifests: list[str] = field(default_factory=list)
+    backbone: str = "facebook/wav2vec2-base"
+    max_duration_s: float = 30.0
+    min_duration_s: float = 2.0
+    feature_cache_dir: str = "runs/feature_cache"
+
+    train_ratio: float = 0.7
+    val_ratio: float = 0.15
+    seed: int = 42
+
+    hidden_dim: int = 256
+    lr: float = 1e-3
+    epochs: int = 100
+    patience: int = 10
+
+    run_dir: str = ""
+    name: str = "deep"
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    def save(self, path: str | Path) -> Path:
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(yaml.safe_dump(self.to_dict(), sort_keys=False), encoding="utf-8")
+        return path
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> DeepTrainConfig:
+        known = {f.name for f in fields(cls)}
+        return cls(**{k: v for k, v in data.items() if k in known})
+
+    @classmethod
+    def from_yaml(cls, path: str | Path) -> DeepTrainConfig:
+        data = yaml.safe_load(Path(path).read_text(encoding="utf-8")) or {}
+        return cls.from_dict(data)

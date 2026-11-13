@@ -39,6 +39,26 @@ def _resolve_run_dir(config: TrainConfig) -> Path:
     return Path("runs") / f"{stamp}_{config.name}"
 
 
+def _fit_isotonic_calibration(model: lgb.LGBMClassifier, X_val: np.ndarray, y_val: np.ndarray):
+    """Attach isotonic calibration fitted on the validation split.
+
+    sklearn >= 1.6 removed ``cv="prefit"``; with ``FrozenEstimator`` the
+    calibrator is still fit via ``cross_val_predict``, whose fold count must
+    not exceed the smallest class count in the calibration split — hence the
+    adaptive ``cv``.
+    """
+    try:
+        from sklearn.frozen import FrozenEstimator  # sklearn >= 1.6
+
+        min_class = int(np.bincount(np.asarray(y_val, dtype=int)).min())
+        cv = max(2, min(5, min_class))
+        calibrated = CalibratedClassifierCV(FrozenEstimator(model), method="isotonic", cv=cv)
+    except ImportError:  # pragma: no cover - legacy sklearn
+        calibrated = CalibratedClassifierCV(model, method="isotonic", cv="prefit")
+    calibrated.fit(X_val, y_val)
+    return calibrated
+
+
 def train_baseline(config: TrainConfig) -> dict:
     """Train, calibrate, evaluate, and persist a Track-A run.
 
@@ -105,8 +125,7 @@ def train_baseline(config: TrainConfig) -> dict:
 
     calibrated = model  # type: ignore[assignment]
     if config.calibrate and len(np.unique(val.y)) == 2:
-        calibrated = CalibratedClassifierCV(model, method="isotonic", cv="prefit")
-        calibrated.fit(val.X, val.y)
+        calibrated = _fit_isotonic_calibration(model, val.X, val.y)
 
     # ------------------------------------------------------------------
     # evaluate

@@ -1,0 +1,22 @@
+# Track-B deep model: frozen wav2vec2 embeddings -> MLP head
+# Requires the [deep] extra: uv sync --extra deep
+
+manifests:
+  - data/manifests/benchmark.jsonl
+
+backbone: facebook/wav2vec2-base
+max_duration_s: 30.0
+min_duration_s: 2.0
+feature_cache_dir: runs/feature_cache
+
+train_ratio: 0.7
+val_ratio: 0.15
+seed: 42
+
+hidden_dim: 256
+lr: 0.001
+epochs: 100
+patience: 10
+
+name: deep
+run_dir: ""

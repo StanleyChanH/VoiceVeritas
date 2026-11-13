@@ -205,7 +205,9 @@ def _energy_features(x: np.ndarray, sr: int, vad: VadResult) -> dict[str, float]
 
 
 FEATURE_NAMES: tuple[str, ...] = (
-    "duration_log",
+    # NOTE: no duration feature, deliberately. Utterance length is a
+    # dataset/collection artifact (a shortcut that leaks source identity,
+    # see docs/benchmark.md) — not a prosodic cue a fair detector should use.
     # F0
     "f0_voiced_ratio",
     "f0_mean",
@@ -279,7 +281,7 @@ def extract_prosody(
     duration = x.size / sr
     snd = parselmouth.Sound(x, sr)
 
-    feats: dict[str, float] = {"duration_log": float(np.log10(max(duration, _EPS)))}
+    feats: dict[str, float] = {}
 
     f0_feats, _ = _f0_features(snd)
     feats.update(f0_feats)
