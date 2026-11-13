@@ -72,7 +72,10 @@ def shared_cache(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 
 @pytest.fixture(scope="module")
-def trained_run(synthetic_manifest: Path, shared_cache: Path) -> Path:
+def trained_run(
+    synthetic_manifest: Path, shared_cache: Path, tmp_path_factory: pytest.TempPathFactory
+) -> Path:
+    run_dir = tmp_path_factory.mktemp("run") / "smoke"
     config = TrainConfig(
         manifests=[str(synthetic_manifest)],
         feature_cache_dir=str(shared_cache),
@@ -81,15 +84,10 @@ def trained_run(synthetic_manifest: Path, shared_cache: Path) -> Path:
         early_stopping_rounds=15,
         calibrate=False,
         name="smoke",
+        run_dir=str(run_dir),
     )
     train_baseline(config)
-    return _latest_run_dir()
-
-
-def _latest_run_dir() -> Path:
-    runs = sorted(Path("runs").glob("*_smoke"))
-    assert runs, "no smoke run directory created"
-    return runs[-1]
+    return run_dir
 
 
 class TestCalibrationPath:

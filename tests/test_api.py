@@ -33,8 +33,12 @@ def trained_model_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
             sf.write(str(p), x, SR, subtype="PCM_16")
             utts.append(
                 Utterance(
-                    f"api_{spk:02d}_{i}", str(p), 1 if style == "read" else 0,
-                    6.0, f"spk{spk:02d}", "synthetic",
+                    f"api_{spk:02d}_{i}",
+                    str(p),
+                    1 if style == "read" else 0,
+                    6.0,
+                    f"spk{spk:02d}",
+                    "synthetic",
                 )
             )
     manifest = root / "m.jsonl"
@@ -44,8 +48,14 @@ def trained_model_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
         TrainConfig(
             manifests=[str(manifest)],
             feature_cache_dir=str(root / "cache"),
-            lgbm_params={"objective": "binary", "metric": "auc", "learning_rate": 0.1,
-                         "num_leaves": 7, "min_child_samples": 2, "verbosity": -1},
+            lgbm_params={
+                "objective": "binary",
+                "metric": "auc",
+                "learning_rate": 0.1,
+                "num_leaves": 7,
+                "min_child_samples": 2,
+                "verbosity": -1,
+            },
             num_boost_round=30,
             early_stopping_rounds=10,
             calibrate=False,

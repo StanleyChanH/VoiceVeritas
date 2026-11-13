@@ -37,6 +37,32 @@ plus per-segment scores, confidence, and (for the interpretable baseline) the pr
 
 > 📌 **State of research** — the approach follows the SLT 2024 paper [*Classification of Spontaneous and Scripted Speech for Multilingual Audio*](https://arxiv.org/abs/2412.11896): frozen pretrained speech-transformer embeddings + a light classifier beat handcrafted prosodic features. To our knowledge, **no open-source implementation of interview read-speech detection existed before this project.**
 
+## Results / 结果
+
+Speaker-disjoint benchmark (LibriSpeech read vs AMI spontaneous, 65 test
+utterances from unseen speakers; full details & caveats in
+[benchmark.md](docs/benchmark.md)):
+
+| Model | Test AUC-ROC | EER | FPR@TPR95 |
+|---|---|---|---|
+| Track A · prosody + LightGBM (interpretable) | **0.978** | 4% | 4% |
+| Track B · frozen wav2vec2-base + MLP | **1.000** | 0% | 0% |
+
+Latency (Track A API, 10 s audio, CPU-only): **p50 243 ms** end-to-end.
+
+```console
+$ vv predict runs/<run>/model.joblib answer.wav
+model        : prosody_lgbm
+P(read)      : 0.000
+verdict@0.5  : SPONTANEOUS
+top contributors :
+  speechseg_mean     -0.832   ← long speech runs = spontaneous planning
+  pause_total_ratio  -0.776   ← natural pause structure
+```
+
+⚠️ These are *cross-domain* research numbers — recalibrate on your own
+traffic before any operational use ([ethics](docs/ethics.md)).
+
 ## Architecture / 架构
 
 ```mermaid
@@ -51,7 +77,7 @@ flowchart LR
     G --> H["P(read) · confidence\nfeature attribution"]
 ```
 
-- **Track A (interpretable baseline)**: energy VAD + ~50 prosodic handcrafted features (F0 statistics, jitter, shimmer, pause/silence distribution, PVI, articulation-rate variance) → LightGBM with isotonic calibration.
+- **Track A (interpretable baseline)**: energy VAD + 34 prosodic handcrafted features (F0 statistics, jitter, shimmer, pause/silence distribution, nPVI rhythm, syllable-rate variability) → LightGBM with isotonic calibration.
 - **Track B (performance)**: frozen self-supervised backbone ([wav2vec 2.0](https://arxiv.org/abs/2006.11477)) embeddings, chunk-level scoring, median aggregation — the SOTA recipe from the literature.
 - **Metrics that respect candidates**: besides AUC-ROC/AUC-PR we report **EER and FPR@TPR95**, because flagging a fluent honest candidate is worse than missing a subtle reader.
 
@@ -117,15 +143,17 @@ tests/                unit + integration tests on synthetic fixtures
 ## Status & roadmap / 状态与路线图
 
 - [x] M0 — repo skeleton, CI, community files
-- [ ] M1 — audio IO + manifests + speaker-disjoint splits
-- [ ] M2 — VAD + prosodic feature extractor
-- [ ] M3 — training / evaluation pipeline
-- [ ] M4 — real-data benchmark (LibriSpeech vs SBCSAE)
-- [ ] M5 — wav2vec2 frozen-embedding deep track
-- [ ] M6 — CLI + FastAPI service + Docker
-- [ ] M7 — model card, docs, v0.1.0 release
+- [x] M1 — audio IO + manifests + speaker-disjoint splits
+- [x] M2 — VAD + prosodic feature extractor
+- [x] M3 — training / evaluation pipeline
+- [x] M4 — real-data benchmark (LibriSpeech vs AMI), shortcut-leak fixed
+- [x] M5 — wav2vec2 frozen-embedding deep track
+- [x] M6 — CLI + FastAPI service + Docker (243 ms p50 for 10 s audio)
+- [x] M7 — model card, docs, v0.1.0 release
 - [ ] i18n — Chinese spontaneous-speech datasets, multilingual eval
 - [ ] ASR-alignment features (WhisperX forced alignment, optional extra)
+- [ ] Robustness suite — noise/SNR/bitrate stress tests
+- [ ] Pretrained release — publish a ready-to-use model artifact
 
 ## Contributing / 贡献
 

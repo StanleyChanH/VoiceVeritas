@@ -215,7 +215,7 @@ def _cmd_prepare(args: argparse.Namespace) -> int:
 def _cmd_serve(args: argparse.Namespace) -> int:
     try:
         import uvicorn
-    except ImportError as exc:
+    except ImportError:
         print("uvicorn not installed — run: uv sync --extra api", file=sys.stderr)
         return 2
 

@@ -278,7 +278,6 @@ def extract_prosody(
     if vad is None:
         vad = energy_vad(x, sr)
 
-    duration = x.size / sr
     snd = parselmouth.Sound(x, sr)
 
     feats: dict[str, float] = {}

@@ -149,7 +149,9 @@ def create_app(
             confidence=round(abs(result.read_probability - 0.5) * 2.0, 4),
             duration_s=round(result.duration_s, 2),
             segmented_scores=[
-                SegmentScoreOut(start_s=round(s.start_s, 2), end_s=round(s.end_s, 2), score=round(s.score, 4))
+                SegmentScoreOut(
+                    start_s=round(s.start_s, 2), end_s=round(s.end_s, 2), score=round(s.score, 4)
+                )
                 for s in result.segments
             ],
             processing_ms=round(processing_ms, 1),

@@ -31,10 +31,14 @@ def post_audio(url: str, wav_path: str, timeout: float = 120.0) -> tuple[float, 
     with open(wav_path, "rb") as fh:
         payload = fh.read()
     body = (
-        f"--{boundary}\r\n"
-        f'Content-Disposition: form-data; name="audio"; filename="bench.wav"\r\n'
-        f"Content-Type: audio/wav\r\n\r\n"
-    ).encode() + payload + f"\r\n--{boundary}--\r\n".encode()
+        (
+            f"--{boundary}\r\n"
+            f'Content-Disposition: form-data; name="audio"; filename="bench.wav"\r\n'
+            f"Content-Type: audio/wav\r\n\r\n"
+        ).encode()
+        + payload
+        + f"\r\n--{boundary}--\r\n".encode()
+    )
 
     req = urlrequest.Request(
         url,
@@ -64,7 +68,7 @@ def main() -> None:
 
     wall_times: list[float] = []
     server_times: list[float] = []
-    for i in range(args.n):
+    for _ in range(args.n):
         wall, server = post_audio(f"{args.url.rstrip('/')}/v1/predict", wav)
         wall_times.append(wall)
         server_times.append(server)

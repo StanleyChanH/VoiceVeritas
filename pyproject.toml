@@ -114,6 +114,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["B011"]
+"src/voiceveritas/api/*" = ["B008"]  # FastAPI idiom: File/Form defaults
 
 [tool.ruff.format]
 quote-style = "double"

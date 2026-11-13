@@ -50,7 +50,7 @@ def _decode_native(source: AudioSource) -> tuple[np.ndarray, int, str]:
     if isinstance(source, (bytes, bytearray)):
         try:
             frames, sr = sf.read(io.BytesIO(bytes(source)), dtype="float32", always_2d=True)
-        except Exception as exc:  # noqa: BLE001 - bytes have no fallback decoder
+        except Exception as exc:  # bytes have no fallback decoder
             raise AudioLoadError(f"could not decode uploaded audio: {exc}") from exc
         return frames.T, int(sr), "<uploaded bytes>"
 
