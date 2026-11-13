@@ -298,7 +298,7 @@ def extract_prosody(
                 float(pause_durs.sum() / total_s) if pause_durs.size and total_s > 0 else np.nan
             ),
             "long_pause_ratio": (
-                float(pause_durs[pause_durs > 0.6].sum() / pause_durs.sum())
+                float(pause_durs[pause_durs > 0.6].sum()) / float(pause_durs.sum())
                 if pause_durs.size and pause_durs.sum() > 0
                 else np.nan
             ),

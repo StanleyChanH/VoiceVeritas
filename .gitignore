@@ -1,9 +1,11 @@
 # --- Data & artifacts (never commit audio, datasets, checkpoints) ---
-data/
-datasets/
-runs/
-models/
-checkpoints/
+# Anchored to repo root: a bare "models/" pattern also swallowed
+# src/voiceveritas/models/ and shipped a broken wheel (learned the hard way).
+/data/
+/datasets/
+/runs/
+/models/
+/checkpoints/
 *.wav
 *.flac
 *.mp3

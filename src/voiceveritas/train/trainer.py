@@ -50,7 +50,7 @@ def _fit_isotonic_calibration(model: lgb.LGBMClassifier, X_val: np.ndarray, y_va
     try:
         from sklearn.frozen import FrozenEstimator  # sklearn >= 1.6
 
-        min_class = int(np.bincount(np.asarray(y_val, dtype=int)).min())
+        min_class = int(np.min(np.bincount(np.asarray(y_val, dtype=int))))
         cv = max(2, min(5, min_class))
         calibrated = CalibratedClassifierCV(FrozenEstimator(model), method="isotonic", cv=cv)
     except ImportError:  # pragma: no cover - legacy sklearn
