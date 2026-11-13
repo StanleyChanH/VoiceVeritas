@@ -76,6 +76,15 @@ def build_parser() -> argparse.ArgumentParser:
     p_serve.add_argument("--port", type=int, default=8000)
     p_serve.add_argument("--max-upload-mb", type=int, default=50)
 
+    # ------------------------------------------------------------------
+    p_rob = sub.add_parser("robustness", help="stress a trained model under acoustic perturbations")
+    _add_common(p_rob)
+    p_rob.add_argument("model", help="path to model.joblib (or run directory)")
+    p_rob.add_argument("--manifest", required=True, help="manifest JSONL to evaluate on")
+    p_rob.add_argument("--split", default="test", help="manifest split to use (default: test)")
+    p_rob.add_argument("--seed", type=int, default=42)
+    p_rob.add_argument("--out", default="", help="write rows as JSON to this path")
+
     return parser
 
 
@@ -231,6 +240,41 @@ def _cmd_serve(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_robustness(args: argparse.Namespace) -> int:
+    from voiceveritas.eval.robustness import run_robustness_eval
+    from voiceveritas.models import load_model
+
+    model_path = (
+        args.model.rstrip("/\\") + "/model.joblib"
+        if not args.model.endswith("model.joblib")
+        else args.model
+    )
+    model = load_model(model_path)
+    rows = run_robustness_eval(model, args.manifest, seed=args.seed, split=args.split)
+
+    header = f"{'condition':<22s} {'n':>4s} {'AUC':>7s} {'EER':>7s} {'FPR@95':>7s} {'dAUC':>7s}"
+    print(header)
+    print("-" * len(header))
+    for row in rows:
+        if row.get("status") == "skipped":
+            print(f"{row['condition']:<22s}  skipped ({row.get('reason', '')})")
+            continue
+        delta = row["delta_auc_roc"]
+        delta_s = "  base" if delta is None else f"{delta:+.3f}"
+        print(
+            f"{row['condition']:<22s} {row['n']:>4d} {row['auc_roc']:>7.3f} "
+            f"{row['eer']:>7.3f} {row['fpr_at_tpr95']:>7.3f} {delta_s:>7s}"
+        )
+
+    if args.out:
+        from pathlib import Path as P
+
+        P(args.out).parent.mkdir(parents=True, exist_ok=True)
+        P(args.out).write_text(json.dumps(rows, indent=2), encoding="utf-8")
+        print(f"\nrows written to {args.out}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
@@ -246,6 +290,7 @@ def main(argv: list[str] | None = None) -> int:
         "eval": _cmd_eval,
         "prepare": _cmd_prepare,
         "serve": _cmd_serve,
+        "robustness": _cmd_robustness,
     }
     return handlers[args.command](args)
 

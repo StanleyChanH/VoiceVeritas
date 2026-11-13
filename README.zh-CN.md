@@ -31,6 +31,8 @@ P(read | audio) ∈ [0, 1]   —   该音频为"朗读/背诵"的概率
 
 > 📌 **研究现状** —— 方法论基于 SLT 2024 论文 [*Classification of Spontaneous and Scripted Speech for Multilingual Audio*](https://arxiv.org/abs/2412.11896)：冻结的预训练语音大模型嵌入 + 轻量分类头优于手工韵律特征。据我们所知，**在此项目之前，GitHub 上不存在面试读稿检测的开源实现。**
 
+> 🌐 **范围：英语语音。** 本项目只针对英语面试音频——这是设计决策而非疏漏。语音风格线索（停顿节奏、F0 动态、不流利模式）具有语言特异性；扩展到其他语言需要*该语言的原生自发+朗读语料*，而不只是翻译文档。欢迎按 [data.md](docs/data.md) 的规范提交新语言的 PR。
+
 ## 结果
 
 说话人不相交基准（LibriSpeech *朗读* vs AMI *自发*，65 条来自未见说话人的测试音频；完整细节与注意事项见 [benchmark.md](docs/benchmark.md)）：
@@ -52,7 +54,7 @@ top contributors :
   pause_total_ratio  -0.776   ← 自然的停顿结构
 ```
 
-⚠️ 以上是**跨域**研究数字——任何生产使用前，请先在你自己的真实流量上重新校准（[伦理章程](docs/ethics.md)）。
+⚠️ 以上是**跨域**研究数字——任何生产使用前，请先在你自己的真实流量上重新校准（[伦理章程](docs/ethics.md)）。**两条轨道在 ≤10 dB 信噪比下均失效**——部署前请阅读[鲁棒性报告](docs/robustness.md)。
 
 ## 架构
 
@@ -74,6 +76,16 @@ flowchart LR
 
 ## 快速开始
 
+**方式 A —— 预训练模型，零训练**（Track A，产物约 140 KB）：
+
+```bash
+curl -L -o model.joblib \
+  https://github.com/StanleyChanH/VoiceVeritas/releases/download/v0.1.1/voiceveritas-prosody-lgbm-v0.1.1.joblib
+uv run vv predict model.joblib answer.wav
+```
+
+**方式 B —— 完整复现流水线：**
+
 ```bash
 # 1. 安装（Python 3.10+；推荐 uv —— 或: pip install -e ".[api,deep]"）
 uv sync --extra api --extra deep
@@ -89,6 +101,9 @@ uv run vv predict runs/<timestamp>_baseline/model.joblib answer.wav
 
 # 4. 启动 REST API（Swagger UI: http://localhost:8000/docs）
 uv run vv serve runs/<timestamp>_baseline
+
+# 5. 噪声/电话频带/重采样压力测试
+uv run vv robustness runs/<timestamp>_baseline --manifest data/manifests/benchmark.jsonl
 ```
 
 <details>
@@ -128,17 +143,17 @@ tests/                基于合成夹具的单元 + 集成测试
 - [使用指南](docs/usage.md)
 - [数据集准备](docs/data.md) —— LibriSpeech、AMI、SBCSAE、CORAAL（含许可证说明）
 - [基准结果](docs/benchmark.md) —— 含"捷径学习"复盘
+- [鲁棒性报告](docs/robustness.md) —— 噪声/电话频带/重采样压力测试
 - [模型卡](docs/model_card.md)
 - [**伦理与负责任使用**](docs/ethics.md) —— **部署前必读**
 
 ## 状态与路线图
 
 - [x] 双轨模型、说话人不相交基准、CLI + FastAPI + Docker
-- [x] v0.1.0 已发布（见 [releases](https://github.com/StanleyChanH/VoiceVeritas/releases)）
-- [ ] i18n —— 中文自发语音数据集、多语言评测
+- [x] 鲁棒性套件 —— 噪声/信噪比/码率压力测试 + 诚实的退化报告
+- [x] 预训练发布 —— Track-A 模型产物见 [releases](https://github.com/StanleyChanH/VoiceVeritas/releases)
 - [ ] ASR 对齐特征（WhisperX 强制对齐，可选依赖）
-- [ ] 鲁棒性套件 —— 噪声/信噪比/码率压力测试
-- [ ] 预训练发布 —— 提供开箱即用的模型产物
+- [ ] 噪声感知训练（数据增强）+ SNR 门控路由
 
 ## 贡献
 

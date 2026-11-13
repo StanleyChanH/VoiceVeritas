@@ -31,6 +31,8 @@ plus per-segment scores, confidence, and (for the interpretable baseline) the pr
 
 > 📌 **State of research** — the approach follows the SLT 2024 paper [*Classification of Spontaneous and Scripted Speech for Multilingual Audio*](https://arxiv.org/abs/2412.11896): frozen pretrained speech-transformer embeddings + a light classifier beat handcrafted prosodic features. To our knowledge, **no open-source implementation of interview read-speech detection existed before this project.**
 
+> 🌐 **Scope: English speech.** The project targets English interview audio only — by design, not by omission. Speech-style cues (pause rhythm, F0 dynamics, disfluency patterns) are language-specific; extending to other languages requires *native spontaneous+read corpora per language*, not just machine translation of docs. PRs for new languages are welcome following [data.md](docs/data.md).
+
 ## Results
 
 Speaker-disjoint benchmark (LibriSpeech *read* vs AMI *spontaneous*, 65 test utterances from unseen speakers; full details & caveats in [benchmark.md](docs/benchmark.md)):
@@ -52,7 +54,7 @@ top contributors :
   pause_total_ratio  -0.776   ← natural pause structure
 ```
 
-⚠️ These are *cross-domain* research numbers — recalibrate on your own traffic before any operational use ([ethics](docs/ethics.md)).
+⚠️ These are *cross-domain* research numbers — recalibrate on your own traffic before any operational use ([ethics](docs/ethics.md)). **Neither track survives ≤10 dB SNR** — see the [robustness report](docs/robustness.md) before deploying.
 
 ## Architecture
 
@@ -74,6 +76,16 @@ flowchart LR
 
 ## Quickstart
 
+**Option A — pretrained model, zero training** (Track A, ~140 KB artifact):
+
+```bash
+curl -L -o model.joblib \
+  https://github.com/StanleyChanH/VoiceVeritas/releases/download/v0.1.1/voiceveritas-prosody-lgbm-v0.1.1.joblib
+uv run vv predict model.joblib answer.wav
+```
+
+**Option B — reproduce the full pipeline:**
+
 ```bash
 # 1. Install (Python 3.10+; uv recommended — or: pip install -e ".[api,deep]")
 uv sync --extra api --extra deep
@@ -89,6 +101,9 @@ uv run vv predict runs/<timestamp>_baseline/model.joblib answer.wav
 
 # 4. Serve the REST API (Swagger UI at http://localhost:8000/docs)
 uv run vv serve runs/<timestamp>_baseline
+
+# 5. Stress a model under noise / telephony / resampling conditions
+uv run vv robustness runs/<timestamp>_baseline --manifest data/manifests/benchmark.jsonl
 ```
 
 <details>
@@ -128,17 +143,17 @@ tests/                unit + integration tests on synthetic fixtures
 - [Usage guide](docs/usage.md)
 - [Dataset preparation](docs/data.md) — LibriSpeech, AMI, SBCSAE, CORAAL (licenses documented)
 - [Benchmark results](docs/benchmark.md) — including the shortcut-learning postmortem
+- [Robustness report](docs/robustness.md) — noise/telephony/resampling stress tests
 - [Model card](docs/model_card.md)
 - [**Ethics & responsible use**](docs/ethics.md) — **read this before deploying**
 
 ## Status & roadmap
 
 - [x] Dual-track models, speaker-disjoint benchmark, CLI + FastAPI + Docker
-- [x] v0.1.0 released (see [releases](https://github.com/StanleyChanH/VoiceVeritas/releases))
-- [ ] i18n — Chinese spontaneous-speech datasets, multilingual eval
+- [x] Robustness suite — noise/SNR/bitrate stress tests + honest degradation report
+- [x] Pretrained release — Track-A artifact on the [releases](https://github.com/StanleyChanH/VoiceVeritas/releases) page
 - [ ] ASR-alignment features (WhisperX forced alignment, optional extra)
-- [ ] Robustness suite — noise/SNR/bitrate stress tests
-- [ ] Pretrained release — publish a ready-to-use model artifact
+- [ ] Noise-aware training (augmentation) + SNR-gated routing
 
 ## Contributing
 

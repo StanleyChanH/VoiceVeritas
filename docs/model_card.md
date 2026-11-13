@@ -52,7 +52,8 @@ the same speaker-disjoint split).
 - **Duration shortcut (historical)**: an early benchmark leaked utterance
   length; fixed and regression-tested (see benchmark.md). Keep the guard
   when adding features or datasets.
-- **English only** in the default benchmark.
+- **English only, by design**: speech-style cues are language-specific;
+  the project scopes to English interview speech (see README).
 
 ## Ethical considerations & deployment guidance
 
