@@ -53,3 +53,4 @@ Thumbs.db
 
 # --- Session / editor tooling ---
 .zcode/
+*.log
