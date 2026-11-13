@@ -55,6 +55,11 @@ class TrainConfig:
     # docs/benchmark.md). Enable only for same-channel training data.
     use_asr_conf: bool = False
 
+    # noise-aware training: augment train-split audio (white/pink noise,
+    # 10-25 dB SNR, +/-3 dB gain) before prosody extraction; val/test stay
+    # clean so degradation is measured against reality (docs/robustness.md)
+    augment: bool = False
+
     # output
     run_dir: str = ""  # default: runs/<timestamp>_<name>
     name: str = "baseline"

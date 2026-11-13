@@ -94,6 +94,8 @@ def train_baseline(config: TrainConfig, transcriber=None) -> dict:
         transcriber=transcriber,
         compute_ppl=config.compute_ppl,
         use_asr_conf=config.use_asr_conf,
+        augment=config.augment,
+        augment_seed=config.seed,
     )
     if config.use_asr:
         from voiceveritas.models.prosody_asr_lgbm import COMBINED_NAMES

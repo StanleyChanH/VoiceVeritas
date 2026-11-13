@@ -127,6 +127,9 @@ def _cmd_predict(args: argparse.Namespace) -> int:
             "aggregation": result.aggregation,
             "duration_s": result.duration_s,
             "model": result.model_name,
+            "estimated_snr_db": None
+            if result.estimated_snr_db != result.estimated_snr_db
+            else round(result.estimated_snr_db, 1),
             "segments": [
                 {"start_s": s.start_s, "end_s": s.end_s, "score": s.score} for s in result.segments
             ],
@@ -143,6 +146,11 @@ def _cmd_predict(args: argparse.Namespace) -> int:
     print(f"duration         : {result.duration_s:.1f}s")
     print(f"P(read)          : {result.read_probability:.3f}")
     print(f"verdict@0.5      : {verdict}")
+    snr = result.estimated_snr_db
+    if snr == snr:  # not NaN
+        print(f"estimated SNR    : {snr:.1f} dB")
+        if snr < 15.0:
+            print("WARNING          : SNR < 15 dB — score unreliable, route to human review")
     for seg in result.segments:
         print(f"  [{seg.start_s:7.2f} - {seg.end_s:7.2f}s]  score={seg.score:.3f}")
     if result.top_contributors:

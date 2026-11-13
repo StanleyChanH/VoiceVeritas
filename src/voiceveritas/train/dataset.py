@@ -84,6 +84,8 @@ def build_feature_dataset(
     transcriber: Callable[..., list] | None = None,
     compute_ppl: bool = False,
     use_asr_conf: bool = False,
+    augment: bool = False,
+    augment_seed: int = 42,
 ) -> FeatureDataset:
     """Load manifests and extract (or fetch cached) features per utterance.
 
@@ -92,6 +94,11 @@ def build_feature_dataset(
     ``transcriber`` is injectable for tests. ASR confidence columns are
     masked (NaN) unless ``use_asr_conf`` — they proxy recording quality,
     which leaks corpus identity on cross-domain benchmarks.
+
+    With ``augment=True``, *train-split* audio is noise/gain-augmented
+    before prosody extraction (deterministic per utterance; see
+    ``augment_for_training``). Lexical features keep clean transcripts —
+    the word cache stays valid across augmented/clean runs.
     """
     utterances: list[Utterance] = []
     for p in manifest_paths:
@@ -100,8 +107,11 @@ def build_feature_dataset(
     cache: dict[str, np.ndarray] = {}
     cache_path = None
     # combined prosody+ASR vectors get their own cache namespace: sharing
-    # one with prosody-only vectors would silently mix dimensions
+    # one with prosody-only vectors would silently mix dimensions;
+    # augmented runs get a third namespace
     version = "prosody-asr-v1" if with_asr else FEATURE_VERSION
+    if augment:
+        version += "-aug"
     if cache_dir is not None:
         cache_path = Path(cache_dir) / f"{version}.npz"
         if cache_path.exists():
@@ -139,7 +149,14 @@ def build_feature_dataset(
             if trim_duration < min_duration_s:
                 n_skipped += 1
                 continue
-            vec = feature_fn(trimmed, loaded.sample_rate).values
+            analysis_audio = trimmed
+            if augment and utt.split == "train":
+                from voiceveritas.train.augment import augment_for_training
+
+                analysis_audio = augment_for_training(
+                    trimmed, loaded.sample_rate, key=utt.utt_id, seed=augment_seed
+                )
+            vec = feature_fn(analysis_audio, loaded.sample_rate).values
             if with_asr:
                 from voiceveritas.asr.features import extract_asr_features
                 from voiceveritas.asr.transcribe import word_cache_key

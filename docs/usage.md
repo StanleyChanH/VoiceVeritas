@@ -25,12 +25,18 @@ model            : prosody_lgbm
 duration         : 27.9s
 P(read)          : 0.812
 verdict@0.5      : READ
+estimated SNR    : 31.4 dB
   [   0.00 -   27.90s]  score=0.812
 top contributors :
   speechseg_mean          +0.92
   pause_total_ratio       +0.55
   ...
 ```
+
+Every prediction includes an **estimated SNR**; below 15 dB the CLI prints
+(and the API returns) an explicit warning to route the audio to human
+review — both model tracks are unreliable in that regime
+([robustness.md](robustness.md)).
 
 Add `--json` for machine-readable output. The 0.5 verdict line is a
 *reference point*, not a recommended policy threshold — see

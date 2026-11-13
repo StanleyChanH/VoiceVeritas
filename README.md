@@ -40,10 +40,14 @@ Speaker-disjoint benchmark (LibriSpeech *read* vs AMI *spontaneous*, 65 test utt
 | Model | Test AUC-ROC | EER | FPR@TPR95 |
 |---|---|---|---|
 | Track A · prosody + LightGBM (interpretable) | **0.978** | 4% | 4% |
+| Track A · + noise-aware augmentation (default) | **0.998** | 4% | 4% |
 | Track A+ASR · + lexical/alignment features (`[asr]` extra) | **0.998** | 5% | **0%** |
 | Track B · frozen wav2vec2-base + MLP | **1.000** | 0% | 0% |
 
-Latency (Track A API, 10 s audio, CPU-only): **p50 243 ms** end-to-end.
+Noise-robustness (white noise 10 dB): unaugmented 0.644 → augmented
+**0.965**; every prediction carries an `estimated_snr_db` and a
+below-15 dB reliability warning. Latency (Track A API, 10 s audio,
+CPU-only): **p50 243 ms** end-to-end.
 
 ```console
 $ vv predict runs/<run>/model.joblib answer.wav
@@ -154,8 +158,9 @@ tests/                unit + integration tests on synthetic fixtures
 - [x] Robustness suite — noise/SNR/bitrate stress tests + honest degradation report
 - [x] Pretrained release — Track-A artifact on the [releases](https://github.com/StanleyChanH/VoiceVeritas/releases) page
 - [x] ASR lexical/alignment features — fillers, pause-syntax misalignment, formality (faster-whisper; `[asr]` extra)
-- [ ] Noise-aware training (augmentation) + SNR-gated routing
+- [x] Noise-aware training (on by default) + SNR estimation & reliability warnings in every prediction
 - [ ] WhisperX character-level forced alignment (finer pause-syntax features)
+- [ ] Augmented embeddings for Track B (noise-robust deep track)
 
 ## Contributing
 

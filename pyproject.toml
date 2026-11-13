@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "voiceveritas"
-version = "0.1.1"
+version = "0.1.2"
 description = "Detect whether interview answers are read/recited from a script or spoken spontaneously. Audio-only, open-source anti-cheat for AI interviews."
 readme = "README.md"
 requires-python = ">=3.10"

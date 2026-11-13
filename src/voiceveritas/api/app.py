@@ -52,6 +52,15 @@ class PredictResponse(BaseModel):
     label: str  # "read" | "spontaneous" at the 0.5 reference threshold
     confidence: float = Field(..., ge=0.0, le=1.0)
     duration_s: float
+    estimated_snr_db: float | None = Field(
+        default=None,
+        description="speech-to-noise estimate; None when unobservable",
+    )
+    warning: str | None = Field(
+        default=None,
+        description="non-empty when the score should not be trusted "
+        "(e.g. SNR below the reliability floor)",
+    )
     segmented_scores: list[SegmentScoreOut]
     processing_ms: float
     model: ModelInfo
@@ -143,11 +152,23 @@ def create_app(
                 for f, c in result.top_contributors
             ]
 
+        snr = result.estimated_snr_db
+        snr_out = round(snr, 1) if snr == snr else None  # NaN -> None
+        warning = None
+        if snr == snr and snr < 15.0:
+            warning = (
+                f"estimated SNR {snr:.1f} dB is below the 15 dB reliability "
+                "floor — both model tracks are unreliable in this regime; "
+                "route to human review instead of trusting this score"
+            )
+
         return PredictResponse(
             read_probability=round(result.read_probability, 4),
             label="read" if result.read_probability >= 0.5 else "spontaneous",
             confidence=round(abs(result.read_probability - 0.5) * 2.0, 4),
             duration_s=round(result.duration_s, 2),
+            estimated_snr_db=snr_out,
+            warning=warning,
             segmented_scores=[
                 SegmentScoreOut(
                     start_s=round(s.start_s, 2), end_s=round(s.end_s, 2), score=round(s.score, 4)

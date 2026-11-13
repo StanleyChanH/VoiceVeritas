@@ -12,6 +12,11 @@ train_ratio: 0.7         # used when manifests carry no splits yet
 val_ratio: 0.15
 seed: 42
 
+# noise-aware training: white/pink noise at 10-25 dB SNR + gain jitter on
+# the train split. Measured effect (docs/robustness.md): white-noise 10 dB
+# AUC 0.644 -> 0.965, and clean-test AUC 0.978 -> 0.998. On by default.
+augment: true
+
 lgbm_params:
   objective: binary
   metric: auc

@@ -32,6 +32,7 @@ class PredictionResult:
     aggregation: str = "median"
     duration_s: float = 0.0
     model_name: str = ""
+    estimated_snr_db: float = float("nan")  # NaN when unobservable
     feature_values: dict[str, float] | None = None
     top_contributors: list[tuple[str, float]] | None = None  # (name, contribution)
 
@@ -74,8 +75,14 @@ class ReadSpeechModel(ABC):
         sr: int,
         window_s: float = 30.0,
         hop_s: float = 15.0,
+        estimate_snr: bool = True,
     ) -> PredictionResult:
-        """Windowed prediction with median aggregation."""
+        """Windowed prediction with median aggregation.
+
+        With ``estimate_snr`` (default), attaches a cheap SNR estimate so
+        callers can route low-SNR audio away from the model — both tracks
+        are unreliable below ~15 dB (docs/robustness.md).
+        """
         duration = len(samples) / sr
         windows = plan_windows(duration, window_s, hop_s)
         segments = [
@@ -84,11 +91,19 @@ class ReadSpeechModel(ABC):
         ]
         scores = np.array([seg.score for seg in segments], dtype=np.float64)
         agg = float(np.median(scores)) if scores.size else 0.0
+
+        snr = float("nan")
+        if estimate_snr:
+            from voiceveritas.vad import estimate_snr_db
+
+            snr = estimate_snr_db(samples, sr)
+
         return PredictionResult(
             read_probability=agg,
             segments=segments,
             duration_s=duration,
             model_name=self.name,
+            estimated_snr_db=snr,
         )
 
     def predict_file(self, path, window_s: float = 30.0, hop_s: float = 15.0) -> PredictionResult:

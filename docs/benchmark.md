@@ -19,8 +19,13 @@ then `vv train --config configs/baseline.yaml` and
 | Model | Test AUC-ROC | AUC-PR | EER | FPR@TPR95 | Brier |
 |---|---|---|---|---|---|
 | Track A: prosody + LightGBM (isotonic) | **0.978** | 0.974 | 0.04 | 0.04 | 0.019 |
+| Track A + noise-aware augmentation (default) | **0.998** | — | 0.04 | 0.04 | — |
 | Track A+ASR: + lexical/alignment features | **0.998** | 0.999 | 0.05 | **0.00** | — |
 | Track B: frozen wav2vec2-base + MLP | **1.000** | 1.000 | 0.00 | 0.00 | — |
+
+Noise-aware augmentation (on by default) also transforms the noise
+robustness profile — see [robustness.md](robustness.md): white-noise 10 dB
+AUC 0.644 → 0.965.
 
 Track A's top features by gain: `zcr_std`, `zcr_mean`, `speechseg_mean`
 (speech-run duration — the literature's #1 cue), `pause_total_ratio`,

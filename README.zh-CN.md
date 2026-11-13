@@ -40,10 +40,13 @@ P(read | audio) ∈ [0, 1]   —   该音频为"朗读/背诵"的概率
 | 模型 | Test AUC-ROC | EER | FPR@TPR95 |
 |---|---|---|---|
 | Track A · 韵律特征 + LightGBM（可解释） | **0.978** | 4% | 4% |
+| Track A · + 噪声感知增强（默认开启） | **0.998** | 4% | 4% |
 | Track A+ASR · + 词法/对齐特征（`[asr]` 可选依赖） | **0.998** | 5% | **0%** |
 | Track B · 冻结 wav2vec2-base + MLP | **1.000** | 0% | 0% |
 
-延迟（Track A API，10 秒音频，纯 CPU）：端到端 **p50 243 ms**。
+噪声鲁棒性（白噪 10 dB）：未增强 0.644 → 增强 **0.965**；每次预测附带
+`estimated_snr_db` 与低于 15 dB 的可靠性警告。延迟（Track A API，10 秒音频，
+纯 CPU）：端到端 **p50 243 ms**。
 
 ```console
 $ vv predict runs/<run>/model.joblib answer.wav
@@ -154,8 +157,9 @@ tests/                基于合成夹具的单元 + 集成测试
 - [x] 鲁棒性套件 —— 噪声/信噪比/码率压力测试 + 诚实的退化报告
 - [x] 预训练发布 —— Track-A 模型产物见 [releases](https://github.com/StanleyChanH/VoiceVeritas/releases)
 - [x] ASR 词法/对齐特征 —— 填充词、停顿-语法错位、口语化度（faster-whisper；`[asr]` 可选依赖）
-- [ ] 噪声感知训练（数据增强）+ SNR 门控路由
+- [x] 噪声感知训练（默认开启）+ 每次预测的 SNR 估计与可靠性警告
 - [ ] WhisperX 字级强制对齐（更细的停顿-语法特征）
+- [ ] Track B 增强嵌入（噪声鲁棒的深度轨道）
 
 ## 贡献
 
