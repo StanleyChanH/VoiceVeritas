@@ -37,16 +37,44 @@ energy VAD's pause segmentation).
 
 ## Track B · frozen wav2vec2-base + MLP
 
-| Condition | AUC-ROC | EER | FPR@TPR95 | ΔAUC |
+The original (unaugmented) head **inverted** under white noise — AUC
+0.137 at 10 dB, i.e. it scored spontaneous audio as *more* read.
+Noise-augmented embeddings (`augment: true` in `configs/deep.yaml`)
+fixed it completely:
+
+| Condition | AUC (augmented) | AUC (original) | EER (aug) | FPR@TPR95 (aug) |
 |---|---|---|---|---|
-| clean | **1.000** | 0.00 | 0.00 | — |
-| pink noise 20 dB | **0.976** | 0.05 | 0.04 | −0.024 |
-| telephony band 300–3400 Hz | 0.957 | 0.04 | 0.04 | −0.043 |
-| resample 8 kHz round trip | 0.922 | 0.225 | 0.20 | −0.078 |
-| white noise 20 dB | 0.885 | 0.16 | 0.36 | −0.115 |
-| white noise 10 dB | **0.137** | 0.76 | 1.00 | −0.863 |
-| pink noise 10 dB | 0.169 | 0.80 | 1.00 | −0.831 |
-| white/pink noise 5 dB | ~0.1–0.2 | ~0.85 | 1.00 | ≈ −0.9 |
+| clean | 0.971 | **1.000** | 0.10 | 0.12 |
+| white noise 20 dB | **0.989** | 0.885 | 0.08 | 0.08 |
+| white noise 10 dB | **0.998** | 0.137 (inverted) | 0.025 | 0.00 |
+| pink noise 10 dB | **0.988** | 0.169 | 0.04 | 0.04 |
+| white noise 5 dB | **0.980** | 0.081 | 0.125 | 0.12 |
+| pink noise 5 dB | **0.947** | 0.170 | 0.12 | 0.12 |
+| telephony band 300–3400 Hz | **0.986** | 0.957 | 0.15 | 0.08 |
+| resample 8 kHz round trip | 0.929 | 0.922 | 0.175 | 0.16 |
+
+The trade is ~3 points of clean AUC (1.000 → 0.971) for near-immunity to
+noise — under 10 dB white noise the augmented deep model (0.998) is now
+the strongest single model in the project.
+
+## Ensembles · median aggregation
+
+`vv ensemble m1.joblib m2.joblib -o ens.joblib` bundles models into a
+portable median-ensemble artifact. Median (not mean) so one failing
+member cannot drag the aggregate. Findings from our three trained models:
+
+| Condition | prosody-aug | deep-aug | **ensemble(2)** | ensemble(3, incl. ASR) |
+|---|---|---|---|---|
+| clean | 0.998 | 0.971 | **0.997** | 0.999 |
+| white noise 10 dB | 0.965 | 0.998 | **0.994** | 0.926 |
+| pink noise 10 dB | 0.931 | 0.988 | **0.986** | 0.987 |
+| white noise 5 dB | 0.941 | 0.980 | 0.944 | — |
+
+**Lesson (honest)**: the 3-member ensemble with the *un-augmented* ASR
+model dropped to 0.926 at white 10 dB — median cannot outperform a
+majority of noise-fragile members. **Only ensemble noise-robust
+members**; the recommended deployable is `ensemble(prosody-aug,
+deep-aug)`.
 
 (MP3 conditions skipped in this run: no ffmpeg on the benchmark machine;
 the harness supports them where ffmpeg is present.)
@@ -58,13 +86,10 @@ the harness supports them where ffmpeg is present.)
 
 2. **Band-limiting is essentially free** (−0.009 AUC augmented).
 
-3. **Track B (unaugmented) still fails differently**: it *inverts* under
-   white noise (AUC below 0.5 — it scores spontaneous audio as more
-   "read"). Mechanism (hypothesis): noise power scales with whole-signal
-   speech power; read-class audio has a higher speech fraction, receives
-   more absolute noise energy, and "noisiness" becomes a class-correlated
-   artifact pointing the wrong way. Applying the same augmentation recipe
-   to Track B (re-extracting embeddings of noisy audio) is future work.
+3. **Track B's white-noise inversion is fixed by augmentation** (0.137 →
+   0.998 at 10 dB). Mechanism (hypothesis): noise power scaled with
+   whole-signal speech power made "noisiness" a class-correlated artifact;
+   training on noisy variants breaks that correlation.
 
 ## Deployment guidance / 部署建议
 
@@ -81,6 +106,6 @@ the harness supports them where ffmpeg is present.)
 
 - [x] Noise-aware training (augmentation) — shipped, on by default
 - [x] SNR estimator + low-confidence routing — shipped in prediction paths
-- [ ] Augment Track B embeddings (re-extract noisy variants)
-- [ ] Investigate Track B's white-noise inversion (per-band SNR matching,
-      noise-conditioned calibration)
+- [x] Augmented Track B embeddings — inversion fixed (0.137 → 0.998 @10 dB)
+- [x] Median ensembles (`vv ensemble`) — deployable: ensemble(prosody-aug, deep-aug)
+- [ ] Noise-augment the ASR track (lexical features under noise)

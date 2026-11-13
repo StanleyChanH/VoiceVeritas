@@ -66,6 +66,28 @@ def embed_window(
     return np.concatenate([hidden.mean(axis=0), hidden.std(axis=0)])
 
 
+try:  # module-level head class: pickle requires a real module attribute
+    import torch.nn as _nn
+
+    class Head(_nn.Module):
+        """MLP head over pooled embeddings (picklable, ensemble-safe)."""
+
+        def __init__(self, in_dim: int, hidden: int) -> None:
+            super().__init__()
+            self.net = _nn.Sequential(
+                _nn.Linear(in_dim, hidden),
+                _nn.GELU(),
+                _nn.Dropout(0.2),
+                _nn.Linear(hidden, 1),
+            )
+
+        def forward(self, x):  # type: ignore[no-untyped-def]
+            return self.net(x).squeeze(-1)
+
+except ImportError:  # pragma: no cover - torch is an optional extra
+    Head = None  # type: ignore[assignment, misc]
+
+
 class Wav2vecHead(ReadSpeechModel):
     """MLP head over frozen wav2vec 2.0 embeddings."""
 
@@ -81,24 +103,9 @@ class Wav2vecHead(ReadSpeechModel):
         backbone_name: str = DEFAULT_BACKBONE,
         metadata: dict[str, Any] | None = None,
     ):
-        import torch
-        import torch.nn as nn
-
-        class _Head(nn.Module):
-            def __init__(self, in_dim: int, hidden: int) -> None:
-                super().__init__()
-                self.net = nn.Sequential(
-                    nn.Linear(in_dim, hidden),
-                    nn.GELU(),
-                    nn.Dropout(0.2),
-                    nn.Linear(hidden, 1),
-                )
-
-            def forward(self, x):  # type: ignore[no-untyped-def]
-                return self.net(x).squeeze(-1)
-
-        self.torch = torch
-        self.net = _Head(embed_dim, hidden_dim)
+        if Head is None:  # pragma: no cover - torch missing
+            raise ImportError("torch is required for wav2vec_head models: uv sync --extra deep")
+        self.net = Head(embed_dim, hidden_dim)
         self.net.load_state_dict(state_dict)
         self.net.eval()
         self.hidden_dim = hidden_dim
