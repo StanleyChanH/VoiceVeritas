@@ -162,7 +162,7 @@ tests/                unit + integration tests on synthetic fixtures
 - [x] ASR lexical/alignment features — fillers, pause-syntax misalignment, formality (faster-whisper; `[asr]` extra)
 - [x] Noise-aware training (on by default) + SNR estimation & reliability warnings in every prediction
 - [x] Noise-robust deep track (inversion fixed) + median ensembles (`vv ensemble`)
-- [ ] WhisperX character-level forced alignment (finer pause-syntax features)
+- [x] Character-level forced alignment (WhisperX recipe, zero extra deps) — capability shipped; benchmark evaluation exposed a coverage leak, documented and rejected
 - [x] Noise-augmented ASR track — evaluated, negative result (see robustness.md)
 
 ## Contributing

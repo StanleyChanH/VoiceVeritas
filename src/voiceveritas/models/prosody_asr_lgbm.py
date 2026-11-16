@@ -16,7 +16,12 @@ from typing import Any
 import numpy as np
 
 from voiceveritas import __version__
-from voiceveritas.asr.features import ASR_FEATURE_NAMES, extract_asr_features
+from voiceveritas.asr.features import (
+    ALIGN_FEATURE_NAMES,
+    ASR_FEATURE_NAMES,
+    extract_align_features,
+    extract_asr_features,
+)
 from voiceveritas.asr.transcribe import WordTimes, transcribe_words
 from voiceveritas.features import FEATURE_NAMES as PROSODY_NAMES
 from voiceveritas.features import extract_prosody
@@ -26,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 MODEL_TYPE = "prosody_asr_lgbm"
 COMBINED_NAMES: tuple[str, ...] = tuple(PROSODY_NAMES) + tuple(ASR_FEATURE_NAMES)
+COMBINED_NAMES_ALIGN: tuple[str, ...] = COMBINED_NAMES + tuple(ALIGN_FEATURE_NAMES)
 
 
 class ProsodyASRLGBM(ProsodyLGBM):
@@ -40,16 +46,22 @@ class ProsodyASRLGBM(ProsodyLGBM):
         metadata: dict[str, Any] | None = None,
         compute_ppl: bool = False,
     ):
-        if list(feature_names) != list(COMBINED_NAMES):
+        names = list(feature_names)
+        if names == list(COMBINED_NAMES):
+            self.use_align = False
+        elif names == list(COMBINED_NAMES_ALIGN):
+            self.use_align = True
+        else:
             raise ValueError(
-                "feature contract mismatch: expected prosody+ASR combined "
-                f"features (n={len(COMBINED_NAMES)}), got n={len(feature_names)}. "
-                "This artifact belongs to a different feature set."
+                "feature contract mismatch: expected prosody+ASR "
+                f"(n={len(COMBINED_NAMES)}) or prosody+ASR+align "
+                f"(n={len(COMBINED_NAMES_ALIGN)}) features, got "
+                f"n={len(names)}. This artifact belongs to a different feature set."
             )
         # NOTE: bypass ProsodyLGBM's own contract check by constructing the
         # parent chain manually — we keep its calibration/persistence logic.
         self.model = model
-        self.feature_names = list(feature_names)
+        self.feature_names = names
         self.metadata = metadata or {}
         self.compute_ppl = compute_ppl
 
@@ -61,15 +73,33 @@ class ProsodyASRLGBM(ProsodyLGBM):
         prosody = extract_prosody(window, sr).values
         words: list[WordTimes] = transcribe_words(window, sr)
         asr = extract_asr_features(words, len(window) / sr, compute_ppl=self.compute_ppl).values
-        return np.concatenate([prosody, asr])
+        blocks = [prosody, asr]
+        if self.use_align:
+            from voiceveritas.asr.char_align import (
+                align_transcript,
+                frame_chars,
+                midword_silence_frames,
+            )
+
+            spans = frame_chars(window, sr)
+            aligned = align_transcript(spans, " ".join(w.word for w in words))
+            blocks.append(
+                extract_align_features(
+                    aligned,
+                    len(window) / sr,
+                    midword_silences=midword_silence_frames(spans),
+                ).values
+            )
+        return np.concatenate(blocks)
 
     def explain(self, x: np.ndarray, top_k: int = 5) -> list[tuple[str, float]]:
-        """TreeSHAP over combined names (reuse parent logic via names)."""
+        """TreeSHAP over the artifact's own contract."""
+        names = COMBINED_NAMES_ALIGN if self.use_align else COMBINED_NAMES
         try:
             contrib = self._raw_lgbm().predict(x, pred_contrib=True)
             shap = contrib[0, :-1]
             order = np.argsort(-np.abs(shap))[:top_k]
-            return [(COMBINED_NAMES[i], float(shap[i])) for i in order]
+            return [(names[i], float(shap[i])) for i in order]
         except Exception:
             logger.debug("explanation failed", exc_info=True)
             return []

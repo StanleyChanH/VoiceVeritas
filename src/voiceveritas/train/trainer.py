@@ -94,10 +94,15 @@ def train_baseline(config: TrainConfig, transcriber=None) -> dict:
         transcriber=transcriber,
         compute_ppl=config.compute_ppl,
         use_asr_conf=config.use_asr_conf,
+        use_align=config.use_align,
         augment=config.augment,
         augment_seed=config.seed,
     )
-    if config.use_asr:
+    if config.use_asr and config.use_align:
+        from voiceveritas.models.prosody_asr_lgbm import COMBINED_NAMES_ALIGN
+
+        feature_names = list(COMBINED_NAMES_ALIGN)
+    elif config.use_asr:
         from voiceveritas.models.prosody_asr_lgbm import COMBINED_NAMES
 
         feature_names = list(COMBINED_NAMES)

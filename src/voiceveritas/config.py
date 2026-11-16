@@ -55,6 +55,10 @@ class TrainConfig:
     # docs/benchmark.md). Enable only for same-channel training data.
     use_asr_conf: bool = False
 
+    # char-level forced alignment block (needs [deep] extra; see the
+    # deployment-trap note in asr/features.py — same-channel data only)
+    use_align: bool = False
+
     # noise-aware training: augment train-split audio (white/pink noise,
     # 10-25 dB SNR, +/-3 dB gain) before prosody extraction; val/test stay
     # clean so degradation is measured against reality (docs/robustness.md)

@@ -1,0 +1,39 @@
+# Track A+ASR+ALIGN: adds 5 char-alignment fine-timing features.
+# ⚠️ See the deployment-trap note in src/voiceveritas/asr/features.py and
+# docs/robustness.md BEFORE enabling: alignment quality is a channel
+# property; on mixed-source corpora the NaN pattern leaks corpus identity.
+# Intended for same-channel deployment data.
+
+manifests:
+  - data/manifests/benchmark.jsonl
+
+max_duration_s: 30.0
+min_duration_s: 2.0
+feature_cache_dir: runs/feature_cache
+
+train_ratio: 0.7
+val_ratio: 0.15
+seed: 42
+
+use_asr: true
+use_align: true
+compute_ppl: false
+use_asr_conf: false
+
+lgbm_params:
+  objective: binary
+  metric: auc
+  learning_rate: 0.05
+  num_leaves: 31
+  min_child_samples: 10
+  feature_fraction: 0.9
+  bagging_fraction: 0.9
+  bagging_freq: 1
+  verbosity: -1
+
+num_boost_round: 500
+early_stopping_rounds: 50
+calibrate: true
+
+name: baseline_asr_align
+run_dir: ""

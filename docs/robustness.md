@@ -134,3 +134,62 @@ recommended deployable stays `ensemble(prosody-aug, deep-aug)`.
 - [x] Augmented Track B embeddings — inversion fixed (0.137 → 0.998 @10 dB)
 - [x] Median ensembles (`vv ensemble`) — deployable: ensemble(prosody-aug, deep-aug)
 - [x] Noise-augmented ASR track — **evaluated, negative result** (above)
+
+## Character-level forced alignment (capability + trap analysis)
+
+`asr/char_align.py` implements the WhisperX recipe with zero extra
+dependencies beyond the `[deep]` extra: faster-whisper supplies robust
+words, a wav2vec2 CTC model (`jonatasgrosman/wav2vec2-large-xlsr-53-english`,
+the same aligner WhisperX uses) supplies a 20 ms-frame character path,
+and an edit-distance backtrace binds them — absorbing CTC decode errors.
+Five fine-timing features follow (`ALIGN_FEATURE_NAMES`):
+
+- `align_word_final_lengthening_ratio` / `align_final_lengthening_cv` —
+  phrase-final lengthening (the classic prosodic boundary marker) and its
+  regularity
+- `align_gap_cv` — inter-word gap variability on the precise 20 ms grid
+- `align_midword_silence_rate_per_min` — articulation breaks *inside*
+  words, visible only to char-level alignment
+- `align_char_rate_cv` — speech-rate variability across speech runs
+
+**Why it is off by default — the coverage trap.** Alignment quality is a
+*channel* property. On our benchmark the CTC path decodes ~157 words/min
+on LibriSpeech (studio) vs ~67 on AMI (meeting mixes): the spontaneous
+class aligns far worse, so the align features' NaN-missingness pattern
+encodes corpus identity — the same leak class as `duration_log` and
+`asr_conf`. The training experiment below demonstrates it concretely.
+
+**When to enable** (`use_align: true`, `configs/baseline_asr_align.yaml`):
+only on *same-channel* data where read and spontaneous audio are captured
+alike (the actual interview deployment setting), and after verifying that
+alignment coverage is comparable across classes.
+
+### The experiment: alignment "wins" the benchmark — through a leak
+
+Training `configs/baseline_asr_align.yaml` on the benchmark:
+
+| Model | Test AUC | Top feature (gain) |
+|---|---|---|
+| prosody + ASR (honest baseline) | 0.998 | zcr_std (spread across features) |
+| prosody + ASR + align | 0.9995 | **align_midword_silence_rate: 4581 = 7.5× runner-up** |
+
+Three converging pieces of evidence that this is a channel leak, not a
+style signal:
+
+1. **Decode density**: the CTC path yields ~157 words/min on LibriSpeech
+   vs ~67 on AMI — alignment quality itself encodes corpus identity.
+2. **Class-skewed missingness/values**: `align_midword` NaN rate 0%
+   (read) vs 5.3% (spontaneous); median 210 vs 114 /min.
+3. **Physical implausibility**: 210 mid-word silences per minute ≈ 3.5/s
+   cannot be real articulation breaks — the feature is measuring CTC
+   path density (dense on clean studio audio, sparse on meeting mixes),
+   i.e. exactly the channel property we must not score on.
+
+**Verdict**: we keep the 0.998 prosody+ASR model as the honest benchmark
+number; the align block ships off by default with this analysis. The five
+fine-timing features are genuinely promising *where both classes share a
+channel* — validating them requires same-channel read/spontaneous data,
+which our public benchmark cannot provide. (A related bug this experiment
+flushed out: the conf-masking column index mislocated when extra blocks
+are appended — fixed and regression-tested.)
+

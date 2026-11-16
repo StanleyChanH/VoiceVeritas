@@ -18,7 +18,7 @@ import numpy as np
 
 from voiceveritas import __version__
 from voiceveritas.audio import load_audio
-from voiceveritas.features import FeatureResult, extract_prosody
+from voiceveritas.features import FEATURE_NAMES, FeatureResult, extract_prosody
 from voiceveritas.manifest import Utterance, load_manifest
 
 logger = logging.getLogger(__name__)
@@ -86,6 +86,7 @@ def build_feature_dataset(
     use_asr_conf: bool = False,
     augment: bool = False,
     augment_seed: int = 42,
+    use_align: bool = False,
 ) -> FeatureDataset:
     """Load manifests and extract (or fetch cached) features per utterance.
 
@@ -99,6 +100,11 @@ def build_feature_dataset(
     before prosody extraction (deterministic per utterance; see
     ``augment_for_training``). Lexical features keep clean transcripts —
     the word cache stays valid across augmented/clean runs.
+
+    With ``use_align=True`` (requires ``with_asr``), char-level CTC forced
+    alignment (char_align.py) appends 5 fine-timing features; align vectors
+    are cached under ``align-v1.npz`` and always computed from clean audio.
+    See the deployment-trap note in asr/features.py before enabling.
     """
     utterances: list[Utterance] = []
     for p in manifest_paths:
@@ -110,6 +116,8 @@ def build_feature_dataset(
     # one with prosody-only vectors would silently mix dimensions;
     # augmented runs get a third namespace
     version = "prosody-asr-v1" if with_asr else FEATURE_VERSION
+    if use_align:
+        version = "prosody-asr-align-v1"
     if augment:
         version += "-aug"
     if cache_dir is not None:
@@ -127,6 +135,13 @@ def build_feature_dataset(
         word_cache = dict(load_word_cache(cache_dir))
         if augment:
             word_cache_aug = dict(load_word_cache_aug(cache_dir))
+
+    align_cache: dict[str, np.ndarray] = {}
+    if use_align and cache_dir is not None:
+        align_path = Path(cache_dir) / "align-v1.npz"
+        if align_path.exists():
+            cached = np.load(align_path, allow_pickle=False)
+            align_cache = {k: cached[k] for k in cached.files}
 
     rows: list[np.ndarray] = []
     ys: list[int] = []
@@ -179,6 +194,26 @@ def build_feature_dataset(
                     pool[wkey] = words
                 asr_vec = extract_asr_features(words, trim_duration, compute_ppl=compute_ppl).values
                 vec = np.concatenate([vec, asr_vec])
+                if use_align:
+                    from voiceveritas.asr.char_align import (
+                        align_transcript,
+                        frame_chars,
+                        midword_silence_frames,
+                    )
+                    from voiceveritas.asr.features import extract_align_features
+
+                    akey = _cache_key(utt, "align-v1")
+                    avec = align_cache.get(akey)
+                    if avec is None:
+                        spans = frame_chars(trimmed, loaded.sample_rate)
+                        aligned = align_transcript(spans, " ".join(w.word for w in words))
+                        avec = extract_align_features(
+                            aligned,
+                            trim_duration,
+                            midword_silences=midword_silence_frames(spans),
+                        ).values
+                        align_cache[akey] = avec
+                    vec = np.concatenate([vec, avec])
             cache[key] = vec
         rows.append(np.asarray(vec, dtype=np.float64))
         ys.append(utt.label)
@@ -199,7 +234,9 @@ def build_feature_dataset(
     if with_asr and not use_asr_conf:
         from voiceveritas.asr.features import ASR_FEATURE_NAMES
 
-        n_prosody = X.shape[1] - len(ASR_FEATURE_NAMES)
+        # prosody block width is a constant — deriving it from X.shape[1]
+        # mislocates the columns whenever extra blocks (align) are appended
+        n_prosody = len(FEATURE_NAMES)
         for conf_name in ("asr_conf_mean", "asr_conf_std"):
             X[:, n_prosody + ASR_FEATURE_NAMES.index(conf_name)] = np.nan
 
@@ -215,6 +252,8 @@ def build_feature_dataset(
             save_word_cache(cache_dir, word_cache)  # type: ignore[arg-type]
         if word_cache_aug:
             save_word_cache_aug(cache_dir, word_cache_aug)  # type: ignore[arg-type]
+    if use_align and cache_dir is not None and align_cache:
+        np.savez_compressed(Path(cache_dir) / "align-v1.npz", **align_cache)  # type: ignore[arg-type]
 
     return FeatureDataset(
         X=X,

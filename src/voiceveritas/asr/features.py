@@ -14,6 +14,7 @@ them as missing.
 from __future__ import annotations
 
 import contextlib
+import itertools
 import math
 
 import numpy as np
@@ -57,6 +58,25 @@ ASR_FEATURE_NAMES: tuple[str, ...] = (
     "ppl_gpt2",
     "wer_vs_reference",
 )
+
+# ----------------------------------------------------------------------
+# alignment-grade features (char-level CTC alignment; see char_align.py)
+#
+# ⚠️ DEPLOYMENT TRAP (documented in docs/robustness.md): alignment quality
+# is a *channel* property. On mixed-source corpora, spontaneous audio may
+# align far worse than read audio — the resulting NaN-missingness pattern
+# leaks corpus identity exactly like duration/asr_conf did. Enable only on
+# same-channel data where both classes align comparably.
+# ----------------------------------------------------------------------
+ALIGN_FEATURE_NAMES: tuple[str, ...] = (
+    "align_word_final_lengthening_ratio",
+    "align_final_lengthening_cv",
+    "align_gap_cv",
+    "align_midword_silence_rate_per_min",
+    "align_char_rate_cv",
+)
+# NOTE: alignment *coverage* is deliberately NOT a feature — it is the
+# channel-quality leak itself. It is returned as diagnostics only.
 
 _PPL_CACHE: dict[str, object] = {}
 
@@ -139,3 +159,75 @@ def extract_asr_features(
 
     vector = np.array([feats[name] for name in ASR_FEATURE_NAMES], dtype=np.float64)
     return FeatureResult(values=vector, names=ASR_FEATURE_NAMES)
+
+
+def extract_align_features(
+    aligned_words: list[WordTimes],
+    duration_s: float,
+    n_transcript_words: int | None = None,
+    midword_silences: list[float] | None = None,
+) -> FeatureResult:
+    """Fine-timing features from char-aligned word timestamps.
+
+    Linguistic grounding: phrase-**final lengthening** (words before a
+    pause stretch) is how speakers mark prosodic boundaries — read speech
+    lengthens *regularly* at clause ends (low CV), spontaneous speech
+    lengthens irregularly wherever planning happens. Gap CV exploits the
+    20 ms-grid precision that word-level timestamps cannot offer.
+    Mid-word silences (articulation breaks) are visible only to char-level
+    alignment.
+
+    ``n_transcript_words`` is accepted for interface symmetry; alignment
+    *coverage* is a diagnostic for callers, never a feature (see the
+    deployment-trap note above).
+    """
+    del n_transcript_words  # diagnostics live with the caller
+    minutes = max(duration_s / 60.0, _EPS)
+    n = len(aligned_words)
+
+    if n < 4:
+        nan = float("nan")
+        return FeatureResult(
+            values=np.array([nan] * len(ALIGN_FEATURE_NAMES), dtype=np.float64),
+            names=ALIGN_FEATURE_NAMES,
+        )
+
+    durs = [w.end - w.start for w in aligned_words]
+    gaps = [b.start - a.end for a, b in itertools.pairwise(aligned_words)]
+
+    pre_pause = [d for d, g in zip(durs[:-1], gaps, strict=False) if g >= 0.15]
+    mid_run = [d for d, g in zip(durs[:-1], gaps, strict=False) if g < 0.05]
+    len_ratio = (
+        float(np_mean(pre_pause) / np_mean(mid_run)) if pre_pause and mid_run else float("nan")
+    )
+    len_cv = float(np_std(pre_pause) / np_mean(pre_pause)) if len(pre_pause) > 1 else float("nan")
+    gap_cv = (
+        float(np_std(gaps) / np_mean(gaps)) if len(gaps) > 1 and np_mean(gaps) > 0 else float("nan")
+    )
+
+    mw_rate = len(midword_silences or []) / minutes
+
+    # chars/sec within speech runs (runs split at gaps >= 0.6s)
+    runs: list[tuple[int, float]] = []
+    run_chars, run_start = 0, aligned_words[0].start
+    last_end = aligned_words[0].end
+    for w, g in zip(aligned_words[1:], gaps, strict=False):
+        if g >= 0.6:
+            runs.append((run_chars, last_end - run_start))
+            run_chars, run_start = 0, w.start
+        else:
+            run_chars += len(w.word)
+        last_end = w.end
+    runs.append((run_chars, last_end - run_start))
+    rates = [c / t for c, t in runs if t > 0.2 and c > 2]
+    char_rate_cv = float(np_std(rates) / np_mean(rates)) if len(rates) > 1 else float("nan")
+
+    feats = {
+        "align_word_final_lengthening_ratio": len_ratio,
+        "align_final_lengthening_cv": len_cv,
+        "align_gap_cv": gap_cv,
+        "align_midword_silence_rate_per_min": mw_rate,
+        "align_char_rate_cv": char_rate_cv,
+    }
+    vector = np.array([feats[name] for name in ALIGN_FEATURE_NAMES], dtype=np.float64)
+    return FeatureResult(values=vector, names=ALIGN_FEATURE_NAMES)
