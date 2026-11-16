@@ -119,11 +119,14 @@ def build_feature_dataset(
             cache = {k: cached[k] for k in cached.files}
             logger.info("loaded %d cached feature vectors from %s", len(cache), cache_path)
 
-    word_cache: dict[str, list] = {}
+    word_cache: dict[str, list] = {}  # clean transcripts
+    word_cache_aug: dict[str, list] = {}  # transcripts of augmented audio
     if with_asr and cache_dir is not None:
-        from voiceveritas.asr.transcribe import load_word_cache
+        from voiceveritas.asr.transcribe import load_word_cache, load_word_cache_aug
 
         word_cache = dict(load_word_cache(cache_dir))
+        if augment:
+            word_cache_aug = dict(load_word_cache_aug(cache_dir))
 
     rows: list[np.ndarray] = []
     ys: list[int] = []
@@ -150,23 +153,30 @@ def build_feature_dataset(
                 n_skipped += 1
                 continue
             analysis_audio = trimmed
-            if augment and utt.split == "train":
+            asr_source = trimmed  # lexical features read clean transcripts…
+            aug_row = augment and utt.split == "train"
+            if aug_row:
                 from voiceveritas.train.augment import augment_for_training
 
                 analysis_audio = augment_for_training(
                     trimmed, loaded.sample_rate, key=utt.utt_id, seed=augment_seed
                 )
+                if with_asr:
+                    # …unless augmenting: transcribing the noisy variant
+                    # teaches the lexical block to survive real capture
+                    asr_source = analysis_audio
             vec = feature_fn(analysis_audio, loaded.sample_rate).values
             if with_asr:
                 from voiceveritas.asr.features import extract_asr_features
                 from voiceveritas.asr.transcribe import word_cache_key
 
+                pool = word_cache_aug if aug_row else word_cache
                 wkey = word_cache_key(utt.utt_id, utt.path)
-                words = word_cache.get(wkey)
+                words = pool.get(wkey)
                 if words is None:
                     t_fn = transcriber or _default_transcriber
-                    words = t_fn(trimmed, loaded.sample_rate)
-                    word_cache[wkey] = words
+                    words = t_fn(asr_source, loaded.sample_rate)
+                    pool[wkey] = words
                 asr_vec = extract_asr_features(words, trim_duration, compute_ppl=compute_ppl).values
                 vec = np.concatenate([vec, asr_vec])
             cache[key] = vec
@@ -198,10 +208,13 @@ def build_feature_dataset(
         np.savez_compressed(cache_path, **cache)  # type: ignore[arg-type]
         logger.info("cached %d feature vectors at %s", len(cache), cache_path)
 
-    if with_asr and cache_dir is not None and word_cache:
-        from voiceveritas.asr.transcribe import save_word_cache
+    if with_asr and cache_dir is not None:
+        from voiceveritas.asr.transcribe import save_word_cache, save_word_cache_aug
 
-        save_word_cache(cache_dir, word_cache)  # type: ignore[arg-type]
+        if word_cache:
+            save_word_cache(cache_dir, word_cache)  # type: ignore[arg-type]
+        if word_cache_aug:
+            save_word_cache_aug(cache_dir, word_cache_aug)  # type: ignore[arg-type]
 
     return FeatureDataset(
         X=X,

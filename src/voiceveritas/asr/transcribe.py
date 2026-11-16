@@ -81,17 +81,34 @@ def word_cache_key(utt_id: str, path: str) -> str:
 
 
 def load_word_cache(cache_dir: str | Path) -> dict[str, list[WordTimes]]:
-    cache_path = Path(cache_dir) / f"{ASR_CACHE_VERSION}.json"
+    return _load(cache_dir, f"{ASR_CACHE_VERSION}.json")
+
+
+def save_word_cache(cache_dir: str | Path, cache: dict[str, list[WordTimes]]) -> Path:
+    return _save(cache_dir, f"{ASR_CACHE_VERSION}.json", cache)
+
+
+def load_word_cache_aug(cache_dir: str | Path) -> dict[str, list[WordTimes]]:
+    """Transcripts of *augmented* audio (separate namespace, see train.augment)."""
+    return _load(cache_dir, f"{ASR_CACHE_VERSION}-aug.json")
+
+
+def save_word_cache_aug(cache_dir: str | Path, cache: dict[str, list[WordTimes]]) -> Path:
+    return _save(cache_dir, f"{ASR_CACHE_VERSION}-aug.json", cache)
+
+
+def _load(cache_dir: str | Path, filename: str) -> dict[str, list[WordTimes]]:
+    cache_path = Path(cache_dir) / filename
     if not cache_path.exists():
         return {}
     raw = json.loads(cache_path.read_text(encoding="utf-8"))
     return {k: [WordTimes(**w) for w in v] for k, v in raw.items()}
 
 
-def save_word_cache(cache_dir: str | Path, cache: dict[str, list[WordTimes]]) -> Path:
+def _save(cache_dir: str | Path, filename: str, cache: dict[str, list[WordTimes]]) -> Path:
     cache_dir = Path(cache_dir)
     cache_dir.mkdir(parents=True, exist_ok=True)
-    cache_path = cache_dir / f"{ASR_CACHE_VERSION}.json"
+    cache_path = cache_dir / filename
     cache_path.write_text(
         json.dumps({k: [asdict(w) for w in v] for k, v in cache.items()}),
         encoding="utf-8",

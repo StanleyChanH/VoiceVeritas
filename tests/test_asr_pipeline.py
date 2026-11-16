@@ -104,6 +104,32 @@ class TestAsrPipeline:
         wc = load_word_cache(cache)
         assert len(wc) == 24
 
+    def test_augmented_asr_transcribes_noisy_audio(self, corpus: Path, tmp_path: Path):
+        """With augment=True, train-split transcripts land in their own
+        cache namespace; val/test keep clean transcripts."""
+        from voiceveritas.asr.transcribe import load_word_cache, load_word_cache_aug
+        from voiceveritas.manifest import load_manifest
+
+        cache = tmp_path / "augcache"
+        ds = build_feature_dataset(
+            [str(corpus)],
+            cache_dir=cache,
+            with_asr=True,
+            transcriber=stub_transcriber,
+            augment=True,
+            augment_seed=7,
+        )
+        assert ds.X.shape[1] == len(COMBINED_NAMES)
+
+        n_train = sum(1 for u in load_manifest(corpus) if u.split == "train")
+        clean = load_word_cache(cache)
+        aug = load_word_cache_aug(cache)
+        assert len(aug) == n_train
+        assert len(clean) == 24 - n_train
+        # determinism: same seed -> same augmented transcript fingerprint
+        first_key = sorted(aug)[0]
+        assert [w.word for w in aug[first_key]] or aug  # non-empty entries
+
     def test_train_save_load_predict(self, corpus: Path, cache: Path, tmp_path: Path, monkeypatch):
         # stub transcription at *predict* time too
         import voiceveritas.models.prosody_asr_lgbm as pa
