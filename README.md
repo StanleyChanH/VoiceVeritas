@@ -163,7 +163,7 @@ tests/                unit + integration tests on synthetic fixtures
 - [x] Noise-aware training (on by default) + SNR estimation & reliability warnings in every prediction
 - [x] Noise-robust deep track (inversion fixed) + median ensembles (`vv ensemble`)
 - [ ] WhisperX character-level forced alignment (finer pause-syntax features)
-- [ ] Noise-augmented ASR track (lexical features under noise)
+- [x] Noise-augmented ASR track — evaluated, negative result (see robustness.md)
 
 ## Contributing
 

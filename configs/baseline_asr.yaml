@@ -14,7 +14,11 @@ val_ratio: 0.15
 seed: 42
 
 use_asr: true
-augment: true      # prosody AND transcripts augmented on train split
+# augment: false  # NEGATIVE RESULT (docs/robustness.md): transcribing
+#                 # noisy variants with tiny.en yields garbage lexical
+#                 # features; clean AUC 0.998 -> 0.934, noise AUC below
+#                 # the prosody-aug track everywhere. Augmentation stays
+#                 # available for prosody features only.
 compute_ppl: false        # GPT-2 perplexity; needs [deep], ~0.5s/utt slower
 use_asr_conf: false       # whisper-confidence = channel proxy, off by default
 

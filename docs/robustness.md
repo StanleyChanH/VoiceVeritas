@@ -102,10 +102,35 @@ the harness supports them where ffmpeg is present.)
 - Never act on a single degraded-condition score; require corroboration
   (multiple segments, other signals, human review — [ethics.md](ethics.md)).
 
+## Negative result: noise-augmenting the ASR track
+
+We also tried transcribing the *noisy* training variants for the lexical
+block (the recipe that worked for prosody and embeddings). It made things
+**worse**:
+
+| Condition | ASR track (clean-trained) | ASR track (augmented) |
+|---|---|---|
+| clean | 0.998 | **0.934** |
+| white noise 20 dB | — | 0.857 |
+| white noise 10 dB | — | 0.884 |
+| pink noise 10 dB | — | 0.893 |
+
+Mechanism: `tiny.en` transcripts of 10–25 dB audio are themselves noisy
+(wrong words, dropped fillers), so the lexical features degrade to noise
+— unlike wav2vec 2.0 embeddings, which were pretrained on noisy data and
+degrade gracefully. The augmented ASR model underperforms even the
+prosody-aug track everywhere (0.86–0.89 vs 0.93–0.98).
+
+**Conclusion**: augmentation is not a universal fix — it transfers to
+robust representations, not to pipelines with fragile intermediate steps.
+The capability remains available (`augment: true` transcribes noisy
+variants), but `configs/baseline_asr.yaml` keeps it off, and the
+recommended deployable stays `ensemble(prosody-aug, deep-aug)`.
+
 ## Roadmap (mitigations)
 
 - [x] Noise-aware training (augmentation) — shipped, on by default
 - [x] SNR estimator + low-confidence routing — shipped in prediction paths
 - [x] Augmented Track B embeddings — inversion fixed (0.137 → 0.998 @10 dB)
 - [x] Median ensembles (`vv ensemble`) — deployable: ensemble(prosody-aug, deep-aug)
-- [ ] Noise-augment the ASR track (lexical features under noise)
+- [x] Noise-augmented ASR track — **evaluated, negative result** (above)
