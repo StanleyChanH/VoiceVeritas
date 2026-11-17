@@ -122,7 +122,7 @@ with gr.Blocks(title="VoiceVeritas demo") as demo:
         inputs=audio_in,
         outputs=[label_out, contrib_out, diag_out],
         fn=predict,
-        cache_examples=True,
+        cache_examples=False,  # no precompute at boot — examples score on click
         label="Synthetic caricatures (not real speech) — just to see it move",
     )
 
