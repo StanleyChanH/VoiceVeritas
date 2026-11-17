@@ -13,6 +13,8 @@ uv sync --extra api --extra deep
 Extras: `deep` (torch/transformers for Track B), `api` (FastAPI service),
 `asr` (optional transcript-alignment features), `dev` (lint/test tooling).
 For mp3/m4a support install **ffmpeg** and make sure it is on `PATH`.
+**macOS only:** LightGBM needs the OpenMP runtime — `brew install libomp`
+before the first `import lightgbm`.
 
 ## Getting a model
 
