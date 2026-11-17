@@ -37,6 +37,18 @@ def build_parser() -> argparse.ArgumentParser:
     p_deep.add_argument("--manifest", action="append", default=None, help="override manifests")
 
     # ------------------------------------------------------------------
+    p_dl = sub.add_parser("download-model", help="download a pretrained model from GitHub releases")
+    _add_common(p_dl)
+    p_dl.add_argument(
+        "--model",
+        default="prosody",
+        help="which pretrained artifact (default: prosody Track-A)",
+    )
+    p_dl.add_argument("--version", default="", help="release tag (default: latest artifact)")
+    p_dl.add_argument("--out", default="", help="destination path (default: user cache dir)")
+    p_dl.add_argument("--force", action="store_true", help="re-download even if already cached")
+
+    # ------------------------------------------------------------------
     p_predict = sub.add_parser("predict", help="score one audio file")
     _add_common(p_predict)
     p_predict.add_argument("model", help="path to model.joblib")
@@ -115,6 +127,22 @@ def _cmd_train_deep(args: argparse.Namespace) -> int:
         config.manifests = args.manifest
     report = train_deep(config)
     print(json.dumps(report, indent=2, default=str))
+    return 0
+
+
+def _cmd_download_model(args: argparse.Namespace) -> int:
+    from voiceveritas.model_hub import DEFAULT_VERSION, download_model
+
+    path = download_model(
+        model=args.model,
+        version=args.version or DEFAULT_VERSION,
+        out=args.out or None,
+        force=args.force,
+    )
+    # keep stdout machine-friendly: just the path, so `vv predict "$(vv download-model)"`
+    # works; the usage hint goes to stderr
+    print(path)
+    print(f'try it with       : vv predict "{path}" answer.wav', file=sys.stderr)
     return 0
 
 
@@ -315,6 +343,7 @@ def main(argv: list[str] | None = None) -> int:
     handlers = {
         "train": _cmd_train,
         "train-deep": _cmd_train_deep,
+        "download-model": _cmd_download_model,
         "predict": _cmd_predict,
         "eval": _cmd_eval,
         "prepare": _cmd_prepare,
