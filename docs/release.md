@@ -63,6 +63,22 @@ cd hf-space && git add . && git commit -m "update demo" && git push
 Update `requirements.txt` in the Space when a new package version should be
 pinned.
 
+**Deploy notes (learned the hard way, 2026-11):**
+
+- Free accounts: dynamic (Gradio/Docker) Spaces on cpu-basic now require
+  PRO — the free dynamic option is **ZeroGPU**. Create the Space via the
+  web UI (API `create_repo` defaults to cpu-basic → 402).
+- HF git rejects binary files (Xet required) — keep the Space repo
+  text-only; `demo/hf-space` synthesizes its example clips at boot.
+- `launch(ssr_mode=False)`: Gradio's experimental SSR Node server is
+  unreliable on hosted workers.
+- If the app dies right after `Running on local URL` with **no traceback**,
+  deploy a 12-line hello-world stub first: if the stub dies too, it is a
+  platform/account-level ZeroGPU fault (restart via
+  `POST /api/spaces/{id}/restart`, then file on the HF forum) — not app
+  code. Pin `sdk_version` in the front-matter to the gradio you tested
+  locally, not a guessed one.
+
 ## 4. Announcing (promotion)
 
 Only after the post-release smoke test passes: update the README badges if
