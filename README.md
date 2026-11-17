@@ -5,7 +5,7 @@
 **Detect whether an interview answer is being read from a script — or genuinely spoken.**
 
 [![CI](https://github.com/StanleyChanH/VoiceVeritas/actions/workflows/ci.yml/badge.svg)](https://github.com/StanleyChanH/VoiceVeritas/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/voiceveritas.svg)](https://pypi.org/project/voiceveritas/)
+[![PyPI](https://img.shields.io/pypi/v/voiceveritas.svg?style=flat)](https://pypi.org/project/voiceveritas/)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-261230.svg)](https://github.com/astral-sh/ruff)
