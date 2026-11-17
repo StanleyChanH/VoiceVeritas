@@ -11,7 +11,8 @@
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-261230.svg)](https://github.com/astral-sh/ruff)
 
 *纯音频的 AI 面试读稿检测系统。*
-**[在线体验 →](https://huggingface.co/spaces/StanleyChanH/VoiceVeritas)** · 仅英语语音，上传不留存。
+
+**立即体验：** `pip install voiceveritas` → `vv download-model` → `vv predict` · 浏览器演示见 [`demo/hf-space/`](demo/hf-space/)
 
 ![vv predict 输出](docs/assets/terminal-predict.png)
 
@@ -176,7 +177,7 @@ tests/                基于合成夹具的单元 + 集成测试
 - [x] 噪声鲁棒深度轨道（倒挂已修复）+ 中值集成（`vv ensemble`）
 - [x] 字级强制对齐（WhisperX 同款方案，零新增依赖）——能力已交付；基准评测暴露覆盖率泄漏，已文档化并拒斥
 - [x] ASR 轨道噪声增强 —— 已评测，负结果（见 robustness.md）
-- [x] PyPI 可安装；`vv download-model` 一键取模型；[`demo/hf-space/`](demo/hf-space/) 在线演示
+- [x] PyPI 可安装；`vv download-model` 一键取模型；[`demo/hf-space/`](demo/hf-space/) 可自部署的 Gradio 演示
 - [ ] 域内评测语料（同一说话人的朗读 vs 自发配对，如 SBCSAE）—— 诚实的泛化性检验
 
 ## 贡献

@@ -11,7 +11,8 @@
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-261230.svg)](https://github.com/astral-sh/ruff)
 
 *Audio-only read-speech detection for AI interview anti-cheating.*
-**[Try the live demo →](https://huggingface.co/spaces/StanleyChanH/VoiceVeritas)** · English speech, uploads not stored.
+
+**Try it:** `pip install voiceveritas` → `vv download-model` → `vv predict` · browser demo ships in [`demo/hf-space/`](demo/hf-space/)
 
 ![vv predict output](docs/assets/terminal-predict.png)
 
@@ -179,7 +180,7 @@ tests/                unit + integration tests on synthetic fixtures
 - [x] Noise-robust deep track (inversion fixed) + median ensembles (`vv ensemble`)
 - [x] Character-level forced alignment (WhisperX recipe, zero extra deps) — capability shipped; benchmark evaluation exposed a coverage leak, documented and rejected
 - [x] Noise-augmented ASR track — evaluated, negative result (see robustness.md)
-- [x] Installable from PyPI; one-command pretrained model (`vv download-model`); live Gradio demo in [`demo/hf-space/`](demo/hf-space/)
+- [x] Installable from PyPI; one-command pretrained model (`vv download-model`); self-deployable Gradio demo in [`demo/hf-space/`](demo/hf-space/)
 - [ ] In-domain evaluation corpus (same-speaker read vs spontaneous, e.g. SBCSAE) — the honest generalization test
 
 ## Contributing
