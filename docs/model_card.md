@@ -36,13 +36,18 @@ CC BY 4.0). No candidate data. Details and licenses: [data.md](data.md).
 
 See [benchmark.md](benchmark.md) for full numbers
 (Track A test AUC 0.978 / EER 4% / FPR@TPR95 4%; Track B test AUC 1.000 on
-the same speaker-disjoint split).
+the same speaker-disjoint split). On the held-out domain-shift corpus
+(SBCSAE + unseen-speaker read speech, [in_domain.md](in_domain.md)) the same
+Track-A artifact drops to AUC 0.868 with ~half of genuinely spontaneous
+conversation above the 0.5 threshold — the published benchmark is an upper
+bound, not a deployment expectation.
 
 ## Known limitations & biases
 
 - **Cross-domain gap**: trained on audiobooks vs meeting speech; single-mic
   interview audio may shift scores in either direction. Recalibrate before
-  relying on absolute probabilities.
+  relying on absolute probabilities. The domain-shift drop is quantified in
+  [in_domain.md](in_domain.md).
 - **Accent / non-native speakers**: untested; disfluency patterns differ
   across L2 speakers and the model may mistake L2 prosody for scriptedness.
   This is the primary fairness risk — evaluate on your population before

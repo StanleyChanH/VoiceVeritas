@@ -36,11 +36,31 @@ meeting spontaneous speech). High scores here do **not** transfer 1:1 to
 your interview traffic — recalibrate on your own data before deployment
 (see [model_card.md](model_card.md)).
 
+## Held-out domain-shift corpus: SBCSAE (eval-only)
+
+[SBCSAE](http://www.openslr.org/155) (OpenSLR 155, CC BY-ND 3.0 US) is 60
+naturally-occurring ~20-minute conversations — **never used in training**.
+Scoring it against unseen-speaker read speech answers the question every
+reviewer asks: did the classifier learn *speech style* or just the AMI
+meeting channel? Results and interpretation: [in_domain.md](in_domain.md).
+
+```bash
+uv run vv prepare sbcsae --download   # 6.1 GB tarball from OpenSLR mirrors
+```
+
+Two deliberate policies:
+
+- **Eval-only**: every manifest entry is `split=test`; SBCSAE cannot leak
+  into training manifests by accident, and its no-derivative license is
+  never triggered (audio is only ever referenced, never remixed).
+- **Conversation = speaker unit**: like AMI sessions, each recording is one
+  `speaker_id` — prevents channel/recording leakage, an approximation
+  documented above.
+
 ## Additional datasets (community contributions welcome)
 
 | Dataset | Style | License | Notes |
 |---|---|---|---|
-| [SBCSAE](http://www.openslr.org/155) (OpenSLR 155) | spontaneous | CC BY-ND 3.0 US | 60 conversations, 6.1 GB; no-derivative clause complicates derived-artifact redistribution |
 | [CORAAL](https://oraal.github.io/coraal) | spontaneous interviews | CC BY-NC-SA 4.0 | non-commercial — do not train the default shipped model on it |
 | [Common Voice](https://commonvoice.mozilla.org) | read | CC0 | huge read-speech augmentation pool |
 | GigaSpeech / WenetSpeech / MagicData-RAMC | mixed / Chinese | various (application) | roadmap: Chinese spontaneous benchmark |

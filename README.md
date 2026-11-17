@@ -9,6 +9,7 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-261230.svg)](https://github.com/astral-sh/ruff)
+[![Codecov](https://img.shields.io/codecov/c/github/StanleyChanH/VoiceVeritas?style=flat)](https://codecov.io/gh/StanleyChanH/VoiceVeritas)
 
 *Audio-only read-speech detection for AI interview anti-cheating.*
 
@@ -58,6 +59,15 @@ augmentation; Track B's white-noise inversion (0.137) fixed to **0.998**;
 the robust ensemble holds **0.994**. Every prediction carries an
 `estimated_snr_db` and a below-15 dB reliability warning. Latency (Track A
 API, 10 s audio, CPU-only): **p50 243 ms** end-to-end.
+
+**Held-out domain-shift eval** (SBCSAE conversations + unseen-speaker read
+speech — nothing seen in training): the two tracks split — Track A falls
+0.998 → **0.868** (prosodic features entangle channel; ~half of genuine
+conversation crosses its 0.5 threshold), while Track B's SSL embeddings
+hold at **1.000** ([in_domain.md](docs/in_domain.md)). Per-utterance
+predictions for every number in the table ship in
+[`docs/assets/predictions/`](docs/assets/predictions/) — audit any
+published AUC without re-training.
 
 ```console
 $ vv predict runs/<run>/model.joblib answer.wav
@@ -165,10 +175,12 @@ tests/                unit + integration tests on synthetic fixtures
 - [Usage guide](docs/usage.md)
 - [Dataset preparation](docs/data.md) — LibriSpeech, AMI, SBCSAE, CORAAL (licenses documented)
 - [Benchmark results](docs/benchmark.md) — including the shortcut-learning postmortem
+- [Domain-shift evaluation](docs/in_domain.md) — SBCSAE held-out generalization test
 - [Robustness report](docs/robustness.md) — noise/telephony/resampling stress tests
 - [Model card](docs/model_card.md)
 - [Release & deploy checklist](docs/release.md) — PyPI, model artifacts, HF Space
 - [**Ethics & responsible use**](docs/ethics.md) — **read this before deploying**
+- [Changelog](CHANGELOG.md)
 
 ## Status & roadmap
 
@@ -181,7 +193,10 @@ tests/                unit + integration tests on synthetic fixtures
 - [x] Character-level forced alignment (WhisperX recipe, zero extra deps) — capability shipped; benchmark evaluation exposed a coverage leak, documented and rejected
 - [x] Noise-augmented ASR track — evaluated, negative result (see robustness.md)
 - [x] Installable from PyPI; one-command pretrained model (`vv download-model`); self-deployable Gradio demo in [`demo/hf-space/`](demo/hf-space/)
-- [ ] In-domain evaluation corpus (same-speaker read vs spontaneous, e.g. SBCSAE) — the honest generalization test
+- [x] Held-out domain-shift evaluation (SBCSAE + unseen-speaker test-clean) — published degradation: Track A 0.998 → 0.868 ([in_domain.md](docs/in_domain.md))
+- [x] Auditable releases — per-utterance prediction CSVs ship with every published result ([docs/assets/predictions/](docs/assets/predictions/))
+- [ ] Same-speaker read/spontaneous corpus (the gold-standard generalization test; consent-first recording protocol in [ethics.md](docs/ethics.md) — contributions welcome)
+- [ ] Second read-side corpus (different channel, e.g. Common Voice) to complete the two-sided domain-shift picture
 
 ## Contributing
 

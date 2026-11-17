@@ -79,6 +79,13 @@ cat data/manifests/librispeech.jsonl data/manifests/ami.jsonl \
     > data/manifests/benchmark.jsonl
 ```
 
+The held-out domain-shift corpus (eval-only, never trained on) is one
+command more — see [in_domain.md](in_domain.md):
+
+```bash
+uv run vv prepare sbcsae --download               # ~6.1 GB from OpenSLR mirrors
+```
+
 ## Training
 
 **Track A — interpretable baseline (minutes on CPU):**
@@ -123,8 +130,13 @@ benchmarks.
 ## Evaluating on a manifest
 
 ```bash
-uv run vv eval --run runs/<run> --manifest data/manifests/benchmark.jsonl
+uv run vv eval --run runs/<run> --manifest data/manifests/benchmark.jsonl --split test
 ```
+
+`--split test` restricts scoring to the held-out split; add
+`--dump-predictions out.csv` to write the auditable per-utterance artifact
+(score, label, SNR, speaker per row) — the same CSVs shipped in
+[`docs/assets/predictions/`](assets/predictions/) for the published results.
 
 ## Serving the API
 

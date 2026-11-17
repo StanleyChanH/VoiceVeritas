@@ -14,6 +14,18 @@ then `vv train --config configs/baseline.yaml` and
 | Unit lengths | randomized 12–25 s in *both* classes (see "the shortcut" below) |
 | Test set | 65 utterances, unseen speakers/sessions |
 
+**Auditable artifacts** — the per-utterance test-set predictions of every
+model in the table ship in [`docs/assets/predictions/`](assets/predictions/)
+(one CSV per model: score, label, SNR, speaker). Recompute any published
+number without re-training, e.g.:
+
+```python
+import pandas as pd
+from sklearn.metrics import roc_auc_score
+df = pd.read_csv("docs/assets/predictions/prosody_aug_test.csv")
+print(roc_auc_score(df.label, df.read_probability))  # 0.998
+```
+
 ## Results
 
 | Model | Test AUC-ROC | AUC-PR | EER | FPR@TPR95 | Brier |

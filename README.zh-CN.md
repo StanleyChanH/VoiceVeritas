@@ -9,6 +9,7 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-261230.svg)](https://github.com/astral-sh/ruff)
+[![Codecov](https://img.shields.io/codecov/c/github/StanleyChanH/VoiceVeritas?style=flat)](https://codecov.io/gh/StanleyChanH/VoiceVeritas)
 
 *纯音频的 AI 面试读稿检测系统。*
 
@@ -57,6 +58,13 @@ P(read | audio) ∈ [0, 1]   —   该音频为"朗读/背诵"的概率
 白噪倒挂（0.137）修复为 **0.998**；鲁棒集成保持 **0.994**。每次预测附带
 `estimated_snr_db` 与低于 15 dB 的可靠性警告。延迟（Track A API，10 秒音频，
 纯 CPU）：端到端 **p50 243 ms**。
+
+**留出域偏移评测**（SBCSAE 自然对话 + 未见过说话人的朗读语音——训练完全
+未见的组合）：两条轨道表现分化——Track A 从 0.998 降至 **0.868**（手工韵律
+特征与信道纠缠，约半数真实对话越过 0.5 阈值），而 Track B 的自监督嵌入保持
+**1.000**（[in_domain.md](docs/in_domain.md)）。上表每个数字的逐条预测工件
+随仓库发布在 [`docs/assets/predictions/`](docs/assets/predictions/)——无需
+重训即可审计任何已发表的 AUC。
 
 ```console
 $ vv predict runs/<run>/model.joblib answer.wav
@@ -162,10 +170,12 @@ tests/                基于合成夹具的单元 + 集成测试
 - [使用指南](docs/usage.md)
 - [数据集准备](docs/data.md) —— LibriSpeech、AMI、SBCSAE、CORAAL（含许可证说明）
 - [基准结果](docs/benchmark.md) —— 含"捷径学习"复盘
+- [域偏移评测](docs/in_domain.md) —— SBCSAE 留出泛化性检验
 - [鲁棒性报告](docs/robustness.md) —— 噪声/电话频带/重采样压力测试
 - [模型卡](docs/model_card.md)
 - [发布与部署清单](docs/release.md) —— PyPI、模型产物、HF Space
 - [**伦理与负责任使用**](docs/ethics.md) —— **部署前必读**
+- [更新日志](CHANGELOG.md)
 
 ## 状态与路线图
 
@@ -178,7 +188,10 @@ tests/                基于合成夹具的单元 + 集成测试
 - [x] 字级强制对齐（WhisperX 同款方案，零新增依赖）——能力已交付；基准评测暴露覆盖率泄漏，已文档化并拒斥
 - [x] ASR 轨道噪声增强 —— 已评测，负结果（见 robustness.md）
 - [x] PyPI 可安装；`vv download-model` 一键取模型；[`demo/hf-space/`](demo/hf-space/) 可自部署的 Gradio 演示
-- [ ] 域内评测语料（同一说话人的朗读 vs 自发配对，如 SBCSAE）—— 诚实的泛化性检验
+- [x] 留出域偏移评测（SBCSAE + 未见说话人的 test-clean）——已发布退化数字：Track A 0.998 → 0.868（[in_domain.md](docs/in_domain.md)）
+- [x] 可审计发布 —— 每个已发表结果的逐条预测 CSV 随仓库分发（[docs/assets/predictions/](docs/assets/predictions/)）
+- [ ] 同说话人朗读/自发配对语料（金标准泛化性检验；知情同意优先的录制规程见 [ethics.md](docs/ethics.md)——欢迎贡献）
+- [ ] 第二朗读侧语料（不同信道，如 Common Voice），补全域偏移评测的另一侧
 
 ## 贡献
 
