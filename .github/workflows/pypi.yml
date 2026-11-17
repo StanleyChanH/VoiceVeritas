@@ -1,0 +1,56 @@
+name: Publish to PyPI
+
+# Builds the package and uploads it to PyPI via trusted publishing (OIDC —
+# no API token to leak). One-time setup required at
+# https://pypi.org/manage/account/publishing/ :
+#   PyPI project  : voiceveritas
+#   owner         : StanleyChanH
+#   repository    : VoiceVeritas
+#   workflow name : Publish to PyPI
+#   environment   : pypi
+# See docs/release.md for the full release checklist.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch: {} # manual dry-run of build+verify steps (no upload)
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & verify distributions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - name: Build sdist and wheel
+        run: uv build
+      - name: Verify metadata
+        run: uvx twine check dist/*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: Upload to PyPI (trusted publishing)
+    needs: build
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write # OIDC token for PyPI trusted publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1

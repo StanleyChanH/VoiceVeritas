@@ -86,7 +86,17 @@ Changelog = "https://github.com/StanleyChanH/VoiceVeritas/releases"
 packages = ["src/voiceveritas"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src", "tests", "docs", "configs", "scripts", "README.md", "LICENSE"]
+include = [
+    "src",
+    "tests",
+    "docs",
+    "configs",
+    "scripts",
+    "examples",
+    "demo",
+    "README.md",
+    "LICENSE",
+]
 
 # ---------------------------------------------------------------------------
 # Ruff: lint + format
