@@ -128,4 +128,6 @@ with gr.Blocks(title="VoiceVeritas demo") as demo:
 
 
 if __name__ == "__main__":
-    demo.launch()
+    # ssr_mode=False: Gradio's experimental Node.js SSR server crashes on
+    # ZeroGPU workers and takes the app down with it (seen in run logs)
+    demo.launch(ssr_mode=False)
