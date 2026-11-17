@@ -18,10 +18,12 @@ Audio is *never* redistributed with the package — only preparation code.
 from voiceveritas.data_prep.ami import AMI_SESSIONS, prepare_ami
 from voiceveritas.data_prep.download import download_file
 from voiceveritas.data_prep.librispeech import prepare_librispeech
+from voiceveritas.data_prep.sbcsae import prepare_sbcsae
 
 __all__ = [
     "AMI_SESSIONS",
     "download_file",
     "prepare_ami",
     "prepare_librispeech",
+    "prepare_sbcsae",
 ]

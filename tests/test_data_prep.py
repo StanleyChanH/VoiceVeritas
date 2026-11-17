@@ -94,3 +94,60 @@ class TestAmiChunking:
             "https://groups.inf.ed.ac.uk/ami/AMICorpusMirror/amicorpus/"
             "ES2002a/audio/ES2002a.Mix-Headset.wav"
         )
+
+
+class TestSbcsaePrep:
+    @pytest.fixture()
+    def fake_sbcsae_tree(self, tmp_path: Path) -> Path:
+        """Two fake conversations with VAD-detectable speechlike audio."""
+        root = tmp_path / "SBCSAE" / "wav"
+        root.mkdir(parents=True)
+        for conv, seed in (("SBC001", 11), ("SBC009", 12)):
+            rng_local = np.random.default_rng(seed)
+            x = synthesize_speechlike(rng_local, 40.0, style="spontaneous")
+            sf.write(str(root / f"{conv}.wav"), x, SR, subtype="PCM_16")
+        return root.parent.parent  # rglob reaches the wavs from the top
+
+    def test_prepare_sbcsae_manifest(self, fake_sbcsae_tree: Path, tmp_path: Path):
+        from voiceveritas.data_prep.sbcsae import prepare_sbcsae
+
+        manifest = tmp_path / "sbcsae.jsonl"
+        utts = prepare_sbcsae(
+            fake_sbcsae_tree,
+            out_dir=tmp_path / "chunks",
+            manifest_path=manifest,
+            max_chunks_per_conversation=3,
+        )
+        assert utts, "no chunks produced"
+        assert all(u.label == 0 for u in utts)
+        assert all(u.dataset == "sbcsae" for u in utts)
+        # eval-only corpus: every entry is the test split
+        assert all(u.split == "test" for u in utts)
+        assert {u.speaker_id for u in utts} == {"sbcsae_sbc001", "sbcsae_sbc009"}
+        reloaded = load_manifest(manifest)
+        assert {u.utt_id for u in reloaded} == {u.utt_id for u in utts}
+
+    def test_conversation_subset(self, fake_sbcsae_tree: Path, tmp_path: Path):
+        from voiceveritas.data_prep.sbcsae import prepare_sbcsae
+
+        utts = prepare_sbcsae(
+            fake_sbcsae_tree,
+            out_dir=tmp_path / "chunks",
+            manifest_path=tmp_path / "m.jsonl",
+            conversations=["sbc001"],
+            max_chunks_per_conversation=3,
+        )
+        assert utts and {u.speaker_id for u in utts} == {"sbcsae_sbc001"}
+
+    def test_conversation_id_normalizes(self):
+        from voiceveritas.data_prep.sbcsae import conversation_id
+
+        assert conversation_id(Path("SBC001.wav")) == "sbc001"
+        assert conversation_id(Path("SBC009.wav")) == "sbc009"
+        assert conversation_id(Path("sbc060.mp3")) == "sbc060"
+
+    def test_missing_audio_raises(self, tmp_path: Path):
+        from voiceveritas.data_prep.sbcsae import prepare_sbcsae
+
+        with pytest.raises(FileNotFoundError, match="extract"):
+            prepare_sbcsae(tmp_path, out_dir=tmp_path / "o", manifest_path=tmp_path / "m.jsonl")

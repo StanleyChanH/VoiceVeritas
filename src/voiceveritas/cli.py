@@ -12,6 +12,15 @@ def _add_common(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("-v", "--verbose", action="store_true", help="debug logging")
 
 
+def _resolve_model_path(arg: str) -> str:
+    """Accept a run directory, a ``model.joblib`` path, or any artifact file."""
+    from pathlib import Path as P
+
+    if P(arg).is_file():
+        return arg
+    return arg.rstrip("/\\") + "/model.joblib"
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="vv",
@@ -60,11 +69,19 @@ def build_parser() -> argparse.ArgumentParser:
     _add_common(p_eval)
     p_eval.add_argument("--run", required=True, help="run directory (contains model.joblib)")
     p_eval.add_argument("--manifest", required=True, help="manifest JSONL to evaluate on")
+    p_eval.add_argument("--split", default="", help="manifest split to use (default: all splits)")
+    p_eval.add_argument(
+        "--dump-predictions",
+        default="",
+        help="write per-utterance predictions to this CSV (auditable benchmark artifact)",
+    )
 
     # ------------------------------------------------------------------
     p_prep = sub.add_parser("prepare", help="download/prepare public benchmark datasets")
     _add_common(p_prep)
-    p_prep.add_argument("dataset", choices=["librispeech", "ami"], help="dataset to prepare")
+    p_prep.add_argument(
+        "dataset", choices=["librispeech", "ami", "sbcsae"], help="dataset to prepare"
+    )
     p_prep.add_argument(
         "--raw-dir", default="", help="where archives/raw audio live (default: data/raw/<dataset>)"
     )
@@ -77,7 +94,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_prep.add_argument("--download", action="store_true", help="download the raw data first")
     p_prep.add_argument("--max-speakers", type=int, default=20, help="librispeech: speaker cap")
     p_prep.add_argument("--max-units", type=int, default=20, help="librispeech: units per speaker")
-    p_prep.add_argument("--max-chunks", type=int, default=25, help="ami: chunks per session")
+    p_prep.add_argument(
+        "--max-chunks", type=int, default=25, help="ami/sbcsae: chunks per session/conversation"
+    )
     p_prep.add_argument("--seed", type=int, default=42)
 
     # ------------------------------------------------------------------
@@ -200,13 +219,12 @@ def _cmd_eval(args: argparse.Namespace) -> int:
     from voiceveritas.metrics import compute_binary_metrics
     from voiceveritas.models import load_model
 
-    model = load_model(
-        args.run.rstrip("/\\") + "/model.joblib"
-        if not args.run.endswith("model.joblib")
-        else args.run
-    )
+    model = load_model(_resolve_model_path(args.run))
     utts = load_manifest(args.manifest)
+    if args.split:
+        utts = [u for u in utts if u.split == args.split]
     y_true, scores = [], []
+    rows: list[dict[str, object]] = []
     for utt in utts:
         try:
             loaded = load_audio(utt.path)
@@ -216,22 +234,78 @@ def _cmd_eval(args: argparse.Namespace) -> int:
         result = model.predict(loaded.samples, loaded.sample_rate)
         y_true.append(utt.label)
         scores.append(result.read_probability)
+        snr = result.estimated_snr_db
+        rows.append(
+            {
+                "utt_id": utt.utt_id,
+                "dataset": utt.dataset,
+                "speaker_id": utt.speaker_id,
+                "label": utt.label,
+                "read_probability": round(result.read_probability, 4),
+                "predicted_label": int(result.read_probability >= 0.5),
+                "duration_s": round(utt.duration, 2),
+                # NaN SNR (unobservable) becomes an empty cell, not "nan"
+                "estimated_snr_db": "" if snr != snr else round(snr, 1),
+            }
+        )
     if not y_true:
         print("no utterances evaluated", file=sys.stderr)
         return 1
-    print(json.dumps(compute_binary_metrics(y_true, scores, label="eval"), indent=2))
+    print(json.dumps(compute_binary_metrics(y_true, scores, label=args.split or "eval"), indent=2))
+    if args.dump_predictions:
+        _write_predictions_csv(args.dump_predictions, rows, model.name)
+        print(f"per-utterance predictions: {args.dump_predictions}", file=sys.stderr)
     return 0
 
 
+def _write_predictions_csv(path: str, rows: list[dict[str, object]], model_name: str) -> None:
+    """Write the auditable per-utterance artifact attached to each release."""
+    import csv
+    from pathlib import Path as P
+
+    out = P(path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with out.open("w", encoding="utf-8", newline="") as fh:
+        fieldnames = [
+            "model",
+            "utt_id",
+            "dataset",
+            "speaker_id",
+            "label",
+            "read_probability",
+            "predicted_label",
+            "duration_s",
+            "estimated_snr_db",
+        ]
+        writer = csv.DictWriter(fh, fieldnames=fieldnames)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({"model": model_name, **row})
+
+
 def _cmd_prepare(args: argparse.Namespace) -> int:
-    from voiceveritas.data_prep import prepare_ami, prepare_librispeech
+    from voiceveritas.data_prep import prepare_ami, prepare_librispeech, prepare_sbcsae
 
     dataset = args.dataset
     raw_dir = args.raw_dir or f"data/raw/{dataset}"
     out_dir = args.out_dir or f"data/processed/{dataset}"
     manifest = args.manifest or f"data/manifests/{dataset}.jsonl"
 
-    if dataset == "librispeech":
+    if dataset == "sbcsae":
+        if args.download:
+            from voiceveritas.data_prep.librispeech import extract_tar
+            from voiceveritas.data_prep.sbcsae import download_sbcsae
+
+            tar_path = download_sbcsae(raw_dir)
+            extract_tar(tar_path, raw_dir)
+        prepare_sbcsae(
+            raw_dir=raw_dir,
+            out_dir=out_dir,
+            manifest_path=manifest,
+            max_chunks_per_conversation=args.max_chunks,
+            seed=args.seed,
+        )
+    elif dataset == "librispeech":
         if args.download:
             from voiceveritas.data_prep.download import download_file
             from voiceveritas.data_prep.librispeech import LIBRISPEECH_URLS, extract_tar
@@ -272,11 +346,7 @@ def _cmd_serve(args: argparse.Namespace) -> int:
 
     from voiceveritas.api import create_app
 
-    model_path = (
-        args.model.rstrip("/\\") + "/model.joblib"
-        if not args.model.endswith("model.joblib")
-        else args.model
-    )
+    model_path = _resolve_model_path(args.model)
     app = create_app(model_path, max_upload_mb=args.max_upload_mb)
     uvicorn.run(app, host=args.host, port=args.port)
     return 0
@@ -286,11 +356,7 @@ def _cmd_robustness(args: argparse.Namespace) -> int:
     from voiceveritas.eval.robustness import run_robustness_eval
     from voiceveritas.models import load_model
 
-    model_path = (
-        args.model.rstrip("/\\") + "/model.joblib"
-        if not args.model.endswith("model.joblib")
-        else args.model
-    )
+    model_path = _resolve_model_path(args.model)
     model = load_model(model_path)
     rows = run_robustness_eval(model, args.manifest, seed=args.seed, split=args.split)
 
