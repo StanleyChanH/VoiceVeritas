@@ -1,0 +1,5 @@
+# The Space installs the package from PyPI. Until the first PyPI release is
+# out, replace the first line with:
+#   voiceveritas @ git+https://github.com/StanleyChanH/VoiceVeritas.git
+voiceveritas>=0.1.4
+gradio>=4.44
