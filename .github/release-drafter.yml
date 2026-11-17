@@ -1,0 +1,39 @@
+# Release-drafter configuration: PR labels -> changelog sections.
+# Mirrors the sections used in CHANGELOG.md.
+
+categories:
+  - title: 🚀 Added
+    labels: [feature, enhancement]
+  - title: 🐛 Fixed
+    labels: [bug, fix]
+  - title: 📊 Evaluated & rejected
+    labels: [negative-result]
+  - title: 📝 Documentation
+    labels: [documentation]
+  - title: 🔧 Changed
+    labels: [chore, dependencies]
+  - title: ⚠️ Breaking
+    labels: [breaking]
+
+autolabeler:
+  - label: feature
+    branch: ["/^feat(ure)?[/-]/", "/^add[/-]/"]
+  - label: bug
+    branch: ["/^fix[/-]/", "/^bug[/-]/"]
+  - label: documentation
+    branch: ["/^docs?[/-]/"]
+  - label: chore
+    branch: ["/^chore[/-]/", "/^refactor[/-]/", "/^ci[/-]/"]
+
+change-template: "- $TITLE (@$AUTHOR) #$NUMBER"
+template: |
+  ## What's changed
+
+  $CHANGES
+
+replacers:
+  - search: "/^(feat|fix|docs|chore|refactor|ci)(\\([^)]*\\))?!?:\\s*/g"
+    replace: ""
+
+exclude-labels:
+  - skip-changelog

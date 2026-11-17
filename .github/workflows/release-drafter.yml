@@ -1,0 +1,22 @@
+name: Release Drafter
+
+# Maintains the *next* release's draft body from merged PR titles/labels, so
+# publishing a release = review + tag. Changelog categories follow CHANGELOG.md.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  update_release_draft:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # write the draft release
+      pull-requests: write # label PRs from commits
+    steps:
+      - uses: release-drafter/release-drafter@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,24 @@
+{
+  "title": "VoiceVeritas: open-source read-speech detection for interview anti-cheating",
+  "description": "<p>VoiceVeritas is an open-source, audio-only system that estimates the probability an interview answer was read or recited from a script rather than spoken spontaneously. It ships two complementary tracks: an interpretable prosodic baseline (34 handcrafted features + LightGBM with feature attribution) and a frozen wav2vec 2.0 embedding head, plus median ensembles, SNR-aware reliability warnings, and a full robustness suite (noise/telephony/compression stress tests). The benchmark, its cross-domain caveats, and the honest failure modes are documented in-repo, including a held-out SBCSAE domain-shift evaluation and per-utterance prediction artifacts for auditing.</p>",
+  "license": "Apache-2.0",
+  "upload_type": "software",
+  "access_right": "open",
+  "creators": [
+    {
+      "name": "VoiceVeritas Contributors"
+    }
+  ],
+  "keywords": [
+    "speech processing",
+    "read-speech detection",
+    "spontaneous speech",
+    "prosody",
+    "wav2vec2",
+    "anti-cheating",
+    "interview",
+    "machine learning"
+  ],
+  "language": "eng",
+  "notes": "Trained-model weights and manifests inherit their training-data licenses (LibriSpeech CC BY 4.0, AMI CC BY 4.0, SBCSAE CC BY-ND 3.0 US — eval-only)."
+}

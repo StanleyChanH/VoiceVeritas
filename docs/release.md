@@ -1,7 +1,8 @@
 # Release checklist / 发布清单
 
-Every release ships four things in sync: the **git tag**, the **GitHub
-release** (with the pretrained artifact attached), the **PyPI package**, and
+Every release ships five things in sync: the **git tag**, the **GitHub
+release** (with the pretrained artifact + per-utterance predictions
+attached), the **PyPI package**, the **Zenodo DOI** (automatic), and
 (optionally, when the model changed) the **Hugging Face Space demo**.
 
 ## 1. One-time setup (already done? skip)
@@ -13,10 +14,18 @@ release** (with the pretrained artifact attached), the **PyPI package**, and
   PyPI account.
 - [ ] **GitHub release environment** — repo Settings → Environments → create
   `pypi` (referenced by `.github/workflows/pypi.yml`; no secrets needed).
+- [ ] **Zenodo → GitHub integration** — at <https://zenodo.org/account/settings/github/>
+  flip this repository to **on**. Every future GitHub release is archived
+  automatically with a new DOI (metadata comes from `.zenodo.json` in the
+  repo). Put the concept DOI into the README's citation section once minted.
 - [ ] **Hugging Face Space** — create a Gradio Space, then push `demo/hf-space/`
   (see the deploy section at the bottom).
 
 ## 2. Every release
+
+Release-drafter maintains the next draft release from merged PRs
+(`.github/release-drafter.yml`); publish = review the draft, tag, attach
+artifacts.
 
 1. Bump `version` in `pyproject.toml`; make sure the CLI/API version warnings
    still make sense (`vv` warns when model package ≠ runtime package).
@@ -31,8 +40,16 @@ release** (with the pretrained artifact attached), the **PyPI package**, and
    `voiceveritas-<model>-vX.Y.Z.joblib` (the name pattern **must** match
    `_MODELS` in `model_hub.py` — the asset embeds the full tag including the
    leading `v`, e.g. `voiceveritas-prosody-lgbm-v0.1.2.joblib`).
-5. Publishing the release triggers `Publish to PyPI` (build → twine check →
-   trusted-publishing upload). Verify on
+5. Attach the **auditable predictions**: refresh
+   `docs/assets/predictions/*.csv` from the models this release ships
+   (`vv eval --split test --dump-predictions …` on `data/manifests/benchmark.jsonl`)
+   and attach the same CSVs to the release so the published numbers are
+   checkable without re-training (see [benchmark.md](benchmark.md)).
+6. Update the `[Unreleased]` section of `CHANGELOG.md` into the new version
+   (release-drafter drafts the body from PR labels; CHANGELOG is the
+   human-curated record).
+7. Publishing the release triggers `Publish to PyPI` (build → twine check →
+   trusted-publishing upload) and the Zenodo archive (DOI). Verify on
    <https://pypi.org/project/voiceveritas/>.
 6. Post-release smoke test (do this *before* announcing anything) — from a
    clean environment, no repo checkout needed:

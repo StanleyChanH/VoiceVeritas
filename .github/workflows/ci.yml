@@ -29,12 +29,13 @@ jobs:
         run: uv run mypy
 
   test:
-    name: Test (py${{ matrix.python-version }})
-    runs-on: ubuntu-latest
+    name: Test (${{ matrix.os }}, py${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v6
@@ -43,4 +44,11 @@ jobs:
       - name: Install package with test dependencies
         run: uv sync --extra api --extra dev
       - name: Run tests
-        run: uv run pytest -v
+        run: uv run pytest -v --cov=voiceveritas --cov-report=xml
+      - name: Upload coverage to Codecov
+        # one report per commit: ubuntu/py3.12 job
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        uses: codecov/codecov-action@v5
+        with:
+          files: coverage.xml
+          fail_ci_if_error: false
