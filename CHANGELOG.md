@@ -6,6 +6,10 @@ versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+_Nothing yet._
+
+## [0.2.0] — 2026-11-17
+
 ### Added
 
 - **SBCSAE held-out domain-shift evaluation** (`vv prepare sbcsae`): OpenSLR 155
@@ -92,7 +96,8 @@ versions follow [Semantic Versioning](https://semver.org/).
   spontaneous), CLI (`vv train/predict/eval`), FastAPI service, Docker.
 - Ethics charter, model card, benchmark & data documentation.
 
-[Unreleased]: https://github.com/StanleyChanH/VoiceVeritas/compare/v0.1.5...HEAD
+[Unreleased]: https://github.com/StanleyChanH/VoiceVeritas/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/StanleyChanH/VoiceVeritas/compare/v0.1.5...v0.2.0
 [0.1.5]: https://github.com/StanleyChanH/VoiceVeritas/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/StanleyChanH/VoiceVeritas/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/StanleyChanH/VoiceVeritas/compare/v0.1.2...v0.1.3
