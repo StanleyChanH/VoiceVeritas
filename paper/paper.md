@@ -1,7 +1,7 @@
 ---
-# JOSS submission draft — fill in the author block (name + ORCID of the
-# corresponding author is required by JOSS at submission time) before opening
-# the review issue at https://joss.theoj.org/papers/new
+# JOSS submission draft — only the corresponding author's ORCID remains to be
+# filled in (required by JOSS at submission time) before opening the review
+# issue at https://joss.theoj.org/papers/new
 title: 'VoiceVeritas: open-source read-speech detection for interview anti-cheating'
 tags:
   - Python
@@ -11,7 +11,7 @@ tags:
   - self-supervised learning
   - ethics
 authors:
-  - name: VoiceVeritas Contributors
+  - name: Chen Hao
     affiliation: 1
     corresponding: true
 affiliations:

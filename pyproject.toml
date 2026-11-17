@@ -9,7 +9,7 @@ description = "Detect whether interview answers are read/recited from a script o
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Apache-2.0" }
-authors = [{ name = "VoiceVeritas Contributors" }]
+authors = [{ name = "Chen Hao" }]
 keywords = [
     "speech",
     "anti-cheating",

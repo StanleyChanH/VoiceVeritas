@@ -3,7 +3,8 @@ message: "If you use VoiceVeritas in your research or product, please cite it as
 title: "VoiceVeritas: open-source read-speech detection for interview anti-cheating"
 type: software
 authors:
-  - name: "VoiceVeritas Contributors"
+  - family-names: Chen
+    given-names: Hao
 repository-code: "https://github.com/StanleyChanH/VoiceVeritas"
 keywords:
   - speech-processing

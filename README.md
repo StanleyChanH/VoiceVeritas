@@ -211,7 +211,7 @@ Issues and PRs are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). Please re
 ```bibtex
 @software{voiceveritas2025,
   title  = {VoiceVeritas: open-source read-speech detection for interview anti-cheating},
-  author = {VoiceVeritas Contributors},
+  author = {Chen Hao},
   year   = {2025},
   url    = {https://github.com/StanleyChanH/VoiceVeritas}
 }
