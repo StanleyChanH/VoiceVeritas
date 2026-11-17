@@ -5,6 +5,7 @@ type: software
 authors:
   - family-names: Chen
     given-names: Hao
+    orcid: "https://orcid.org/0009-0009-9228-8518"
 repository-code: "https://github.com/StanleyChanH/VoiceVeritas"
 keywords:
   - speech-processing

@@ -1,7 +1,6 @@
 ---
-# JOSS submission draft — only the corresponding author's ORCID remains to be
-# filled in (required by JOSS at submission time) before opening the review
-# issue at https://joss.theoj.org/papers/new
+# JOSS submission draft — ready to submit. Open the review issue at
+# https://joss.theoj.org/papers/new and reference this file + repository.
 title: 'VoiceVeritas: open-source read-speech detection for interview anti-cheating'
 tags:
   - Python
@@ -14,6 +13,7 @@ authors:
   - name: Chen Hao
     affiliation: 1
     corresponding: true
+    orcid: 0009-0009-9228-8518
 affiliations:
   - name: Independent
     index: 1
