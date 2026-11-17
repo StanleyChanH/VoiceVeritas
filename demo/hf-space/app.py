@@ -2,7 +2,9 @@
 
 Deploy: push this folder to a Gradio Space (see docs/release.md). The app
 installs the voiceveritas package from PyPI and fetches the same pretrained
-artifact ``vv download-model`` uses (~140 KB) on cold start.
+artifact ``vv download-model`` uses (~140 KB) on cold start. Example clips
+are synthesized on first boot from ``voiceveritas.utils.synth`` — the Space
+repo stays text-only (HF git rejects binaries; large files need Xet).
 
 Ethics: uploads are scored in memory and never stored or logged; the score is
 decision *support* for a human reviewer, never an automatic verdict.
@@ -10,15 +12,43 @@ decision *support* for a human reviewer, never an automatic verdict.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import gradio as gr
+import numpy as np
 
 from voiceveritas.audio import load_audio
 from voiceveritas.model_hub import download_model
 from voiceveritas.models import load_model
+from voiceveritas.utils.synth import SR, synthesize_speechlike
 
 MAX_SECONDS = 120  # interview answers longer than this are scored on the first 2 min
 
 MODEL = load_model(str(download_model()))
+
+# same seeds as scripts/make_examples.py, so the demo clips match the repo's examples/
+_EXAMPLES: dict[str, tuple[str, int]] = {
+    "examples/example_read.wav": ("read", 20251116),
+    "examples/example_spontaneous.wav": ("spontaneous", 20251117),
+}
+
+
+def _ensure_examples() -> list[str]:
+    """Synthesize the demo clips on first boot (keeps the repo free of binaries)."""
+    import soundfile as sf
+
+    paths: list[str] = []
+    for rel, (style, seed) in _EXAMPLES.items():
+        path = Path(rel)
+        if not path.exists():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            clip = synthesize_speechlike(np.random.default_rng(seed), 12.0, sr=SR, style=style)
+            sf.write(str(path), clip, SR, subtype="PCM_16")
+        paths.append(str(path))
+    return paths
+
+
+_EXAMPLE_PATHS = _ensure_examples()
 
 ETHICS_MD = """
 **⚠️ Read before judging a candidate with this.**
@@ -88,10 +118,7 @@ with gr.Blocks(title="VoiceVeritas demo") as demo:
     btn.click(predict, inputs=audio_in, outputs=[label_out, contrib_out, diag_out])
 
     gr.Examples(
-        examples=[
-            "examples/example_read.wav",
-            "examples/example_spontaneous.wav",
-        ],
+        examples=_EXAMPLE_PATHS,
         inputs=audio_in,
         outputs=[label_out, contrib_out, diag_out],
         fn=predict,
