@@ -5,11 +5,15 @@
 **检测面试回答是"照稿朗读"还是"真实作答"。**
 
 [![CI](https://github.com/StanleyChanH/VoiceVeritas/actions/workflows/ci.yml/badge.svg)](https://github.com/StanleyChanH/VoiceVeritas/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/voiceveritas.svg)](https://pypi.org/project/voiceveritas/)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-261230.svg)](https://github.com/astral-sh/ruff)
 
 *纯音频的 AI 面试读稿检测系统。*
+**[在线体验 →](https://huggingface.co/spaces/StanleyChanH/VoiceVeritas)** · 仅英语语音，上传不留存。
+
+![vv predict 输出](docs/assets/terminal-predict.png)
 
 [English](README.md) | **简体中文**
 
@@ -34,6 +38,9 @@ P(read | audio) ∈ [0, 1]   —   该音频为"朗读/背诵"的概率
 > 🌐 **范围：英语语音。** 本项目只针对英语面试音频——这是设计决策而非疏漏。语音风格线索（停顿节奏、F0 动态、不流利模式）具有语言特异性；扩展到其他语言需要*该语言的原生自发+朗读语料*，而不只是翻译文档。欢迎按 [data.md](docs/data.md) 的规范提交新语言的 PR。
 
 ## 结果
+
+> ⚠️ **已知局限——引用下方任何数字前请先读这段。**
+> 基准是**跨域**的（LibriSpeech 有声书*朗读* vs AMI 会议*自发*），且规模小（65 条未见说话人测试音频）。真实面试音频介于这两个域之间：请把下表视为**性能上界**，在你的真实流量上重新校准，并预期低于 ~15 dB 信噪比时明显退化。详见 [benchmark.md](docs/benchmark.md) · [robustness.md](docs/robustness.md)。
 
 说话人不相交基准（LibriSpeech *朗读* vs AMI *自发*，65 条来自未见说话人的测试音频；完整细节与注意事项见 [benchmark.md](docs/benchmark.md)）：
 
@@ -85,10 +92,13 @@ flowchart LR
 **方式 A —— 预训练模型，零训练**（Track A，产物约 140 KB）：
 
 ```bash
-curl -L -o model.joblib \
-  https://github.com/StanleyChanH/VoiceVeritas/releases/download/v0.1.1/voiceveritas-prosody-lgbm-v0.1.1.joblib
-uv run vv predict model.joblib answer.wav
+# Python 3.10+；同样适用于 pip/pipx/uvx 或任意虚拟环境
+pip install voiceveritas
+vv download-model                                        # 拉取预训练模型产物
+vv predict "$(vv download-model)" examples/example_spontaneous.wav
 ```
+
+仓库自带两段合成示例音频（[`examples/`](examples/)），装好即可几秒内跑通全流程——真实语音的基准数字见 [benchmark.md](docs/benchmark.md)。
 
 **方式 B —— 完整复现流水线：**
 
@@ -139,7 +149,9 @@ curl -X POST http://localhost:8000/v1/predict \
 ```
 src/voiceveritas/     核心包（音频 IO、VAD、特征、模型、训练、API）
 configs/              实验配置（baseline / deep）
-scripts/              基准测试工具与容器入口
+scripts/              基准测试工具、示例与资产生成脚本
+examples/             两段合成音频，用于即时冒烟测试
+demo/hf-space/        Hugging Face Space（Gradio）网页演示，可直接部署
 docs/                 使用、数据、基准、模型卡、伦理章程
 tests/                基于合成夹具的单元 + 集成测试
 ```
@@ -151,18 +163,21 @@ tests/                基于合成夹具的单元 + 集成测试
 - [基准结果](docs/benchmark.md) —— 含"捷径学习"复盘
 - [鲁棒性报告](docs/robustness.md) —— 噪声/电话频带/重采样压力测试
 - [模型卡](docs/model_card.md)
+- [发布与部署清单](docs/release.md) —— PyPI、模型产物、HF Space
 - [**伦理与负责任使用**](docs/ethics.md) —— **部署前必读**
 
 ## 状态与路线图
 
 - [x] 双轨模型、说话人不相交基准、CLI + FastAPI + Docker
 - [x] 鲁棒性套件 —— 噪声/信噪比/码率压力测试 + 诚实的退化报告
-- [x] 预训练发布 —— Track-A 模型产物见 [releases](https://github.com/StanleyChanH/VoiceVeritas/releases)
+- [x] 预训练发布 —— `vv download-model` 一条命令拉取，产物见 [releases](https://github.com/StanleyChanH/VoiceVeritas/releases)
 - [x] ASR 词法/对齐特征 —— 填充词、停顿-语法错位、口语化度（faster-whisper；`[asr]` 可选依赖）
 - [x] 噪声感知训练（默认开启）+ 每次预测的 SNR 估计与可靠性警告
 - [x] 噪声鲁棒深度轨道（倒挂已修复）+ 中值集成（`vv ensemble`）
 - [x] 字级强制对齐（WhisperX 同款方案，零新增依赖）——能力已交付；基准评测暴露覆盖率泄漏，已文档化并拒斥
 - [x] ASR 轨道噪声增强 —— 已评测，负结果（见 robustness.md）
+- [x] PyPI 可安装；`vv download-model` 一键取模型；[`demo/hf-space/`](demo/hf-space/) 在线演示
+- [ ] 域内评测语料（同一说话人的朗读 vs 自发配对，如 SBCSAE）—— 诚实的泛化性检验
 
 ## 贡献
 

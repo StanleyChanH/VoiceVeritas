@@ -3,16 +3,29 @@
 ## Installation
 
 ```bash
-# with uv (recommended)
-uv sync --extra api --extra deep
+# from PyPI (any environment; no clone needed)
+pip install voiceveritas            # add [api,deep,asr] extras as needed
 
-# or plain pip
-pip install -e ".[api,deep]"
+# from source, with uv (recommended for development)
+uv sync --extra api --extra deep
 ```
 
 Extras: `deep` (torch/transformers for Track B), `api` (FastAPI service),
 `asr` (optional transcript-alignment features), `dev` (lint/test tooling).
 For mp3/m4a support install **ffmpeg** and make sure it is on `PATH`.
+
+## Getting a model
+
+```bash
+# pretrained Track-A artifact from the GitHub release (~140 KB), cached per user
+vv download-model
+vv download-model --version v0.1.2 --out /path/to/model.joblib   # pin/redirect
+```
+
+`download-model` prints the artifact path on stdout (usage hints go to
+stderr), so `vv predict "$(vv download-model)" audio.wav` works directly.
+No model yet? Train one: see [Reproducing the pipeline](#preparing-benchmark-data)
+below, or score the bundled synthetic clips in [`examples/`](../examples/).
 
 ## Scoring one file
 

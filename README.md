@@ -5,11 +5,15 @@
 **Detect whether an interview answer is being read from a script — or genuinely spoken.**
 
 [![CI](https://github.com/StanleyChanH/VoiceVeritas/actions/workflows/ci.yml/badge.svg)](https://github.com/StanleyChanH/VoiceVeritas/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/voiceveritas.svg)](https://pypi.org/project/voiceveritas/)
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-261230.svg)](https://github.com/astral-sh/ruff)
 
 *Audio-only read-speech detection for AI interview anti-cheating.*
+**[Try the live demo →](https://huggingface.co/spaces/StanleyChanH/VoiceVeritas)** · English speech, uploads not stored.
+
+![vv predict output](docs/assets/terminal-predict.png)
 
 **English** | [简体中文](README.zh-CN.md)
 
@@ -34,6 +38,9 @@ plus per-segment scores, confidence, and (for the interpretable baseline) the pr
 > 🌐 **Scope: English speech.** The project targets English interview audio only — by design, not by omission. Speech-style cues (pause rhythm, F0 dynamics, disfluency patterns) are language-specific; extending to other languages requires *native spontaneous+read corpora per language*, not just machine translation of docs. PRs for new languages are welcome following [data.md](docs/data.md).
 
 ## Results
+
+> ⚠️ **Known limitations — read before quoting any number below.**
+> The benchmark is **cross-domain** (LibriSpeech audiobook *read* vs AMI meeting *spontaneous*) and small (65 test utterances from unseen speakers). Real interview audio sits between those domains: treat these numbers as an *upper bound*, recalibrate on your own traffic, and expect degradation below ~15 dB SNR. Details: [benchmark.md](docs/benchmark.md) · [robustness.md](docs/robustness.md).
 
 Speaker-disjoint benchmark (LibriSpeech *read* vs AMI *spontaneous*, 65 test utterances from unseen speakers; full details & caveats in [benchmark.md](docs/benchmark.md)):
 
@@ -86,12 +93,17 @@ flowchart LR
 **Option A — pretrained model, zero training** (Track A, ~140 KB artifact):
 
 ```bash
-curl -L -o model.joblib \
-  https://github.com/StanleyChanH/VoiceVeritas/releases/download/v0.1.1/voiceveritas-prosody-lgbm-v0.1.1.joblib
-uv run vv predict model.joblib answer.wav
+# Python 3.10+; also works with pip/pipx, uvx, or any virtualenv
+pip install voiceveritas
+vv download-model                                        # fetches the pretrained artifact
+vv predict "$(vv download-model)" examples/example_spontaneous.wav
 ```
 
-**Option B — reproduce the full pipeline:**
+Two synthetic example clips ship in [`examples/`](examples/) so the pipeline
+can be exercised in seconds — real-speech benchmarks live in
+[benchmark.md](docs/benchmark.md).
+
+**Option B — reproduce the full pipeline from source:**
 
 ```bash
 # 1. Install (Python 3.10+; uv recommended — or: pip install -e ".[api,deep]")
@@ -140,7 +152,9 @@ curl -X POST http://localhost:8000/v1/predict \
 ```
 src/voiceveritas/     core package (audio IO, VAD, features, models, training, API)
 configs/              experiment configs (baseline / deep)
-scripts/              benchmarking utilities & serve entrypoint
+scripts/              benchmarking utilities, examples & asset generators
+examples/             two synthetic clips for instant smoke-testing
+demo/hf-space/        Hugging Face Space (Gradio) web demo — deployable as-is
 docs/                 usage, data, benchmark, model card, ethics charter
 tests/                unit + integration tests on synthetic fixtures
 ```
@@ -152,18 +166,21 @@ tests/                unit + integration tests on synthetic fixtures
 - [Benchmark results](docs/benchmark.md) — including the shortcut-learning postmortem
 - [Robustness report](docs/robustness.md) — noise/telephony/resampling stress tests
 - [Model card](docs/model_card.md)
+- [Release & deploy checklist](docs/release.md) — PyPI, model artifacts, HF Space
 - [**Ethics & responsible use**](docs/ethics.md) — **read this before deploying**
 
 ## Status & roadmap
 
 - [x] Dual-track models, speaker-disjoint benchmark, CLI + FastAPI + Docker
 - [x] Robustness suite — noise/SNR/bitrate stress tests + honest degradation report
-- [x] Pretrained release — Track-A artifact on the [releases](https://github.com/StanleyChanH/VoiceVeritas/releases) page
+- [x] Pretrained release — Track-A artifact via `vv download-model` + the [releases](https://github.com/StanleyChanH/VoiceVeritas/releases) page
 - [x] ASR lexical/alignment features — fillers, pause-syntax misalignment, formality (faster-whisper; `[asr]` extra)
 - [x] Noise-aware training (on by default) + SNR estimation & reliability warnings in every prediction
 - [x] Noise-robust deep track (inversion fixed) + median ensembles (`vv ensemble`)
 - [x] Character-level forced alignment (WhisperX recipe, zero extra deps) — capability shipped; benchmark evaluation exposed a coverage leak, documented and rejected
 - [x] Noise-augmented ASR track — evaluated, negative result (see robustness.md)
+- [x] Installable from PyPI; one-command pretrained model (`vv download-model`); live Gradio demo in [`demo/hf-space/`](demo/hf-space/)
+- [ ] In-domain evaluation corpus (same-speaker read vs spontaneous, e.g. SBCSAE) — the honest generalization test
 
 ## Contributing
 
