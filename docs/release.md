@@ -14,10 +14,11 @@ attached), the **PyPI package**, the **Zenodo DOI** (automatic), and
   PyPI account.
 - [ ] **GitHub release environment** — repo Settings → Environments → create
   `pypi` (referenced by `.github/workflows/pypi.yml`; no secrets needed).
-- [ ] **Zenodo → GitHub integration** — at <https://zenodo.org/account/settings/github/>
-  flip this repository to **on**. Every future GitHub release is archived
-  automatically with a new DOI (metadata comes from `.zenodo.json` in the
-  repo). Put the concept DOI into the README's citation section once minted.
+- [x] **Zenodo → GitHub integration** — done 2026-11-17. Every GitHub
+  release is archived automatically with a new DOI (metadata comes from
+  `.zenodo.json` in the repo). Concept DOI (cite this one):
+  **[10.5281/zenodo.24307692](https://doi.org/10.5281/zenodo.24307692)** —
+  already wired into the README badges/bibtex and `CITATION.cff`.
 - [ ] **Hugging Face Space** — create a Gradio Space, then push `demo/hf-space/`
   (see the deploy section at the bottom).
 

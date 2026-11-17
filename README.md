@@ -10,6 +10,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](pyproject.toml)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-261230.svg)](https://github.com/astral-sh/ruff)
 [![Codecov](https://img.shields.io/codecov/c/github/StanleyChanH/VoiceVeritas?style=flat)](https://codecov.io/gh/StanleyChanH/VoiceVeritas)
+[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.24307692-blue)](https://doi.org/10.5281/zenodo.24307692)
 
 *Audio-only read-speech detection for AI interview anti-cheating.*
 
@@ -213,6 +214,7 @@ Issues and PRs are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). Please re
   title  = {VoiceVeritas: open-source read-speech detection for interview anti-cheating},
   author = {Chen Hao},
   year   = {2025},
-  url    = {https://github.com/StanleyChanH/VoiceVeritas}
+  url    = {https://github.com/StanleyChanH/VoiceVeritas},
+  doi    = {10.5281/zenodo.24307692}
 }
 ```
